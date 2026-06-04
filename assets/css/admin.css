@@ -1,0 +1,156 @@
+/**
+ * Styles the Map Studio editor controls in the WordPress dashboard.
+ * The layout supports quick scanning of filled and empty region entries.
+ */
+
+.map-studio-admin {
+  --map-studio-admin-space-xs: 4px;
+  --map-studio-admin-space-sm: 8px;
+  --map-studio-admin-space-md: 12px;
+  --map-studio-admin-space-lg: 16px;
+  --map-studio-admin-radius-sm: 4px;
+  --map-studio-admin-border: #c3c4c7;
+  --map-studio-admin-surface: #ffffff;
+  --map-studio-admin-surface-alt: #f6f7f7;
+  --map-studio-admin-text: #1d2327;
+  --map-studio-admin-muted: #646970;
+  --map-studio-admin-accent: #2271b1;
+  --map-studio-admin-accent-soft: #e5f0fa;
+  --map-studio-admin-filled: #00a32a;
+
+  display: grid;
+  gap: var(--map-studio-admin-space-lg);
+  color: var(--map-studio-admin-text);
+}
+
+.map-studio-admin__map-field {
+  display: grid;
+  gap: var(--map-studio-admin-space-xs);
+  max-width: 360px;
+}
+
+.map-studio-admin__map-label {
+  font-weight: 600;
+}
+
+.map-studio-admin__map-select {
+  width: 100%;
+  max-width: 100%;
+}
+
+.map-studio-admin__locked-map {
+  margin: 0;
+  padding: var(--map-studio-admin-space-sm) var(--map-studio-admin-space-md);
+  border: 1px solid var(--map-studio-admin-border);
+  border-radius: var(--map-studio-admin-radius-sm);
+  background: var(--map-studio-admin-surface-alt);
+  color: var(--map-studio-admin-muted);
+  font-weight: 600;
+}
+
+.map-studio-admin__summary {
+  margin: 0;
+  color: var(--map-studio-admin-muted);
+  font-weight: 600;
+}
+
+.map-studio-admin__layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 30%) minmax(0, 1fr);
+  gap: var(--map-studio-admin-space-lg);
+  align-items: start;
+}
+
+.map-studio-admin__regions {
+  display: grid;
+  gap: var(--map-studio-admin-space-xs);
+  max-height: 520px;
+  overflow: auto;
+  padding: var(--map-studio-admin-space-sm);
+  border: 1px solid var(--map-studio-admin-border);
+  border-radius: var(--map-studio-admin-radius-sm);
+  background: var(--map-studio-admin-surface-alt);
+}
+
+.map-studio-admin__region-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--map-studio-admin-space-sm);
+  width: 100%;
+  min-height: 34px;
+  padding: var(--map-studio-admin-space-sm) var(--map-studio-admin-space-md);
+  border: 1px solid transparent;
+  border-radius: var(--map-studio-admin-radius-sm);
+  background: var(--map-studio-admin-surface);
+  color: var(--map-studio-admin-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.map-studio-admin__region-button:focus-visible {
+  outline: 2px solid var(--map-studio-admin-accent);
+  outline-offset: 1px;
+}
+
+.map-studio-admin__region-button.is-selected {
+  border-color: var(--map-studio-admin-accent);
+  background: var(--map-studio-admin-accent-soft);
+}
+
+.map-studio-admin__region-button.has-content .map-studio-admin__status {
+  background: var(--map-studio-admin-filled);
+}
+
+.map-studio-admin__region-label {
+  overflow-wrap: anywhere;
+}
+
+.map-studio-admin__status {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--map-studio-admin-border);
+}
+
+.map-studio-admin__editor {
+  min-width: 0;
+}
+
+.map-studio-admin__colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--map-studio-admin-space-md);
+  margin: 0;
+  padding: var(--map-studio-admin-space-md);
+  border: 1px solid var(--map-studio-admin-border);
+  border-radius: var(--map-studio-admin-radius-sm);
+}
+
+.map-studio-admin__colors legend {
+  padding: 0 var(--map-studio-admin-space-xs);
+  font-weight: 600;
+}
+
+.map-studio-admin__color-field {
+  display: grid;
+  gap: var(--map-studio-admin-space-xs);
+  color: var(--map-studio-admin-muted);
+  font-weight: 600;
+}
+
+.map-studio-admin__color-field input {
+  width: 100%;
+  min-height: 36px;
+}
+
+@media (max-width: 782px) {
+  .map-studio-admin__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .map-studio-admin__regions {
+    max-height: 320px;
+  }
+}

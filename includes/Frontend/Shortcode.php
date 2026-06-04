@@ -1,0 +1,133 @@
+<?php
+declare(strict_types=1);
+
+namespace MapStudio\Frontend;
+
+use MapStudio\Admin\MapPostType;
+use MapStudio\MapMeta;
+use MapStudio\MapRegistry;
+use MapStudio\SvgMap;
+
+/**
+ * Renders public Map Studio shortcodes and enqueues frontend assets on demand.
+ * Each shortcode instance receives unique SVG IDs and scoped color variables.
+ */
+final class Shortcode {
+    private static int $instanceCounter = 0;
+
+    public function register(): void {
+        if (!function_exists('add_shortcode')) {
+            return;
+        }
+
+        \add_shortcode('map_studio', [$this, 'render']);
+    }
+
+    /**
+     * @param array<string, mixed>|string $atts
+     */
+    public function render(array|string $atts): string {
+        $atts = \shortcode_atts(
+            ['id' => 0],
+            is_array($atts) ? $atts : [],
+            'map_studio'
+        );
+        $mapId = \absint($atts['id'] ?? 0);
+
+        if ($mapId <= 0) {
+            return $this->invalidShortcodeOutput();
+        }
+
+        $post = \get_post($mapId);
+
+        if (
+            !is_object($post) ||
+            ($post->post_type ?? '') !== MapPostType::POST_TYPE ||
+            ($post->post_status ?? '') !== 'publish'
+        ) {
+            return $this->invalidShortcodeOutput();
+        }
+
+        $registry = new MapRegistry(MAP_STUDIO_PATH . 'assets/maps');
+        $payload = MapMeta::get($mapId);
+        $mapDefinition = $payload['mapId'] !== '' ? $registry->get($payload['mapId']) : null;
+
+        if ($mapDefinition === null) {
+            return $this->invalidShortcodeOutput();
+        }
+
+        $payload = MapMeta::sanitizePayload($payload, $mapDefinition->id(), $mapDefinition);
+        $activeRegions = MapMeta::activeRegions($payload, $mapDefinition);
+        $instanceId = $this->nextInstanceId($mapId);
+        $instanceClass = 'map-studio--instance-' . $instanceId;
+
+        $this->enqueueAssets($instanceClass, $payload['colors']);
+
+        $svg = new SvgMap($mapDefinition);
+        $dataJson = \wp_json_encode($activeRegions, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+        if (!is_string($dataJson)) {
+            $dataJson = '{}';
+        }
+
+        $markup = '<div class="map-studio ' . \esc_attr($instanceClass) . '" data-map-studio-instance="' . \esc_attr($instanceId) . '">';
+        $markup .= $svg->renderForInstance($instanceId, array_keys($activeRegions));
+        $markup .= '<div class="map-studio__bubble" role="dialog" aria-hidden="true">';
+        $markup .= '<button type="button" class="map-studio__close" aria-label="' . \esc_attr__('Close map information', 'map-studio') . '">&times;</button>';
+        $markup .= '<div class="map-studio__bubble-content" tabindex="-1"></div>';
+        $markup .= '</div>';
+        $markup .= '<script type="application/json" class="map-studio__data">' . $dataJson . '</script>';
+        $markup .= '</div>';
+
+        return $markup;
+    }
+
+    /**
+     * @param array<string, string> $colors
+     */
+    private function enqueueAssets(string $instanceClass, array $colors): void {
+        \wp_enqueue_style(
+            'map-studio-frontend',
+            MAP_STUDIO_URL . 'assets/css/frontend.css',
+            [],
+            MAP_STUDIO_VERSION
+        );
+
+        \wp_enqueue_script(
+            'map-studio-frontend',
+            MAP_STUDIO_URL . 'assets/js/frontend.js',
+            [],
+            MAP_STUDIO_VERSION,
+            true
+        );
+
+        $defaults = MapMeta::defaultPayload()['colors'];
+        $colors = MapMeta::sanitizePayload(['colors' => $colors])['colors'];
+        $css = sprintf(
+            ".%s{--map-studio-color-inactive:%s;--map-studio-color-active:%s;--map-studio-color-hover:%s;--map-studio-color-stroke:%s;--map-studio-color-bubble-background:%s;--map-studio-color-bubble-text:%s;}",
+            $instanceClass,
+            $colors['inactive'] ?? $defaults['inactive'],
+            $colors['active'] ?? $defaults['active'],
+            $colors['hover'] ?? $defaults['hover'],
+            $colors['stroke'] ?? $defaults['stroke'],
+            $colors['bubbleBackground'] ?? $defaults['bubbleBackground'],
+            $colors['bubbleText'] ?? $defaults['bubbleText']
+        );
+
+        \wp_add_inline_style('map-studio-frontend', $css);
+    }
+
+    private function invalidShortcodeOutput(): string {
+        if (function_exists('current_user_can') && \current_user_can('manage_options')) {
+            return '<p class="map-studio__notice">' . \esc_html__('Map Studio shortcode is missing a valid map ID.', 'map-studio') . '</p>';
+        }
+
+        return '';
+    }
+
+    private function nextInstanceId(int $mapId): string {
+        self::$instanceCounter++;
+
+        return 'map-' . $mapId . '-' . self::$instanceCounter;
+    }
+}

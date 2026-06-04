@@ -1,0 +1,132 @@
+/**
+ * Styles public Map Studio interactive SVG maps.
+ * The shortcode renderer scopes map colors through per-instance CSS variables.
+ */
+
+.map-studio {
+  --map-studio-color-inactive: #d1d5db;
+  --map-studio-color-active: #374151;
+  --map-studio-color-hover: #6b7280;
+  --map-studio-color-stroke: #ffffff;
+  --map-studio-color-bubble-background: #ffffff;
+  --map-studio-color-bubble-text: #111827;
+  --map-studio-space-xs: 4px;
+  --map-studio-space-sm: 8px;
+  --map-studio-space-md: 12px;
+  --map-studio-space-lg: 16px;
+  --map-studio-radius-sm: 4px;
+  --map-studio-shadow: 0 12px 28px rgb(0 0 0 / 18%);
+  --map-studio-bubble-x: 0px;
+  --map-studio-bubble-y: 0px;
+
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+}
+
+.map-studio__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.map-studio__region {
+  fill: var(--map-studio-color-inactive);
+  stroke: var(--map-studio-color-stroke);
+  stroke-width: 1;
+  transition: fill 160ms ease;
+}
+
+.map-studio__region.is-inactive {
+  cursor: default;
+}
+
+.map-studio__region.is-active {
+  cursor: pointer;
+}
+
+.map-studio__region.is-active:hover,
+.map-studio__region.is-active:focus {
+  fill: var(--map-studio-color-hover);
+}
+
+.map-studio__region.is-active:focus-visible {
+  outline: 2px solid var(--map-studio-color-active);
+  outline-offset: 2px;
+}
+
+.map-studio__region.is-selected {
+  fill: var(--map-studio-color-active);
+}
+
+.map-studio__bubble {
+  position: absolute;
+  top: var(--map-studio-bubble-y);
+  left: var(--map-studio-bubble-x);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: min(340px, calc(100% - var(--map-studio-space-lg) * 2));
+  max-height: min(340px, calc(100% - var(--map-studio-space-lg) * 2));
+  padding: var(--map-studio-space-md);
+  border: 1px solid var(--map-studio-color-stroke);
+  border-radius: var(--map-studio-radius-sm);
+  background: var(--map-studio-color-bubble-background);
+  box-shadow: var(--map-studio-shadow);
+  color: var(--map-studio-color-bubble-text);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.map-studio__bubble.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.map-studio__bubble-content {
+  min-height: 0;
+  overflow: auto;
+  color: var(--map-studio-color-bubble-text);
+}
+
+.map-studio__bubble-content > :first-child {
+  margin-top: 0;
+}
+
+.map-studio__bubble-content > :last-child {
+  margin-bottom: 0;
+}
+
+.map-studio__close {
+  align-self: flex-end;
+  width: 32px;
+  height: 32px;
+  margin: calc(var(--map-studio-space-xs) * -1) calc(var(--map-studio-space-xs) * -1) var(--map-studio-space-xs) 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--map-studio-radius-sm);
+  background: transparent;
+  color: var(--map-studio-color-bubble-text);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.map-studio__close:hover,
+.map-studio__close:focus-visible {
+  border-color: currentColor;
+}
+
+.map-studio__notice {
+  margin: var(--map-studio-space-md) 0;
+}
+
+@media (max-width: 600px) {
+  .map-studio__bubble {
+    width: calc(100% - var(--map-studio-space-md) * 2);
+    max-height: min(280px, calc(100% - var(--map-studio-space-md) * 2));
+    padding: var(--map-studio-space-sm);
+  }
+}

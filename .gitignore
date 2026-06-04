@@ -1,0 +1,16 @@
+.DS_Store
+Thumbs.db
+
+# Editor/IDE files
+.idea/
+.vscode/
+.claude/
+*.swp
+*.swo
+*~
+
+# Private documentation
+CLAUDE.md
+AUDIT.md
+docs/
+AGENTS.md
