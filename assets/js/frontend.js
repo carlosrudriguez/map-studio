@@ -14,14 +14,16 @@ window.MapStudio.init = (mapElement) => {
   const bubble = mapElement.querySelector('.map-studio__bubble');
   const bubbleContent = mapElement.querySelector('.map-studio__bubble-content');
   const closeButton = mapElement.querySelector('.map-studio__close');
+  const resetButton = mapElement.querySelector('.map-studio__reset');
   const svgElement = mapElement.querySelector('.map-studio__svg');
 
-  if (!dataElement || !bubble || !bubbleContent || !closeButton || !svgElement) {
+  if (!dataElement || !bubble || !bubbleContent || !closeButton || !resetButton || !svgElement) {
     return;
   }
 
   let contentByRegion = {};
   let selectedRegionElement = null;
+  let currentZoomScale = 1;
 
   try {
     const parsed = JSON.parse(dataElement.textContent || '{}');
@@ -31,12 +33,139 @@ window.MapStudio.init = (mapElement) => {
   }
 
   const activeRegionElements = Array.from(mapElement.querySelectorAll('.map-studio__region.is-active'));
+  const zoomSettings = { minScale: 1.6, maxScale: 3.4, viewportRatio: 0.44 };
 
   const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max));
-
   const regionKeyFor = (regionElement) => regionElement.getAttribute('data-map-studio-region-key') || '';
 
   const contentFor = (regionElement) => contentByRegion[regionKeyFor(regionElement)] || '';
+
+  const isMapActive = () => bubble.classList.contains('is-open') || mapElement.classList.contains('is-zoomed');
+
+  const blurActiveControl = () => {
+    const activeElement = document.activeElement;
+
+    if (
+      activeElement &&
+      typeof activeElement.blur === 'function' &&
+      (closeButton.contains(activeElement) || resetButton.contains(activeElement))
+    ) {
+      activeElement.blur();
+    }
+  };
+
+  const svgViewBox = () => {
+    const values = (svgElement.getAttribute('viewBox') || '')
+      .trim()
+      .split(/[\s,]+/)
+      .map((value) => Number(value));
+
+    if (values.length === 4 && values.every((value) => Number.isFinite(value)) && values[2] > 0 && values[3] > 0) {
+      return {
+        x: values[0],
+        y: values[1],
+        width: values[2],
+        height: values[3],
+      };
+    }
+
+    return {
+      x: 0,
+      y: 0,
+      width: parseFloat(svgElement.getAttribute('width') || '') || 1,
+      height: parseFloat(svgElement.getAttribute('height') || '') || 1,
+    };
+  };
+
+  const svgDisplaySize = () => {
+    const rect = svgElement.getBoundingClientRect();
+
+    return {
+      width: svgElement.clientWidth || rect.width / currentZoomScale || 1,
+      height: svgElement.clientHeight || rect.height / currentZoomScale || 1,
+    };
+  };
+
+  const zoomTargetFor = (regionElement) => {
+    if (typeof regionElement.getBBox !== 'function') {
+      return null;
+    }
+
+    let box = null;
+
+    try {
+      box = regionElement.getBBox();
+    } catch (error) {
+      return null;
+    }
+
+    if (!box || !Number.isFinite(box.width) || !Number.isFinite(box.height)) {
+      return null;
+    }
+
+    const viewBox = svgViewBox();
+    const size = svgDisplaySize();
+    const mapWidth = mapElement.clientWidth || size.width;
+    const mapHeight = size.height;
+    const unitX = size.width / viewBox.width;
+    const unitY = size.height / viewBox.height;
+    const regionWidth = Math.max(box.width * unitX, 1);
+    const regionHeight = Math.max(box.height * unitY, 1);
+    const fitScale = Math.min(
+      (size.width * zoomSettings.viewportRatio) / regionWidth,
+      (size.height * zoomSettings.viewportRatio) / regionHeight
+    );
+    const scale = clamp(fitScale, zoomSettings.minScale, zoomSettings.maxScale);
+    const targetX = (box.x + box.width / 2 - viewBox.x) * unitX;
+    const targetY = (box.y + box.height / 2 - viewBox.y) * unitY;
+    const minX = Math.min(0, mapWidth - size.width * scale);
+    const minY = Math.min(0, mapHeight - size.height * scale);
+    const x = clamp(mapWidth / 2 - targetX * scale, minX, 0);
+    const y = clamp(mapHeight / 2 - targetY * scale, minY, 0);
+
+    return {
+      scale,
+      x,
+      y,
+      center: {
+        x: targetX * scale + x,
+        y: targetY * scale + y,
+      },
+    };
+  };
+
+  const setMapZoom = (scale, x, y) => {
+    currentZoomScale = scale;
+    mapElement.classList.toggle('is-zoomed', scale > 1);
+    resetButton.hidden = scale <= 1;
+
+    if (scale <= 1) {
+      mapElement.style.removeProperty('--map-studio-zoom-scale');
+      mapElement.style.removeProperty('--map-studio-zoom-x');
+      mapElement.style.removeProperty('--map-studio-zoom-y');
+      return;
+    }
+
+    mapElement.style.setProperty('--map-studio-zoom-scale', String(scale));
+    mapElement.style.setProperty('--map-studio-zoom-x', `${x}px`);
+    mapElement.style.setProperty('--map-studio-zoom-y', `${y}px`);
+  };
+
+  const resetZoom = () => {
+    setMapZoom(1, 0, 0);
+  };
+
+  const zoomToRegion = (regionElement) => {
+    const target = zoomTargetFor(regionElement);
+
+    if (!target) {
+      resetZoom();
+      return null;
+    }
+
+    setMapZoom(target.scale, target.x, target.y);
+    return target;
+  };
 
   const fallbackCenterFor = (regionElement) => {
     const mapRect = mapElement.getBoundingClientRect();
@@ -124,9 +253,9 @@ window.MapStudio.init = (mapElement) => {
     }
   };
 
-  const positionBubble = (regionElement) => {
+  const positionBubble = (regionElement, centerOverride = null) => {
     const mapRect = mapElement.getBoundingClientRect();
-    const center = centerFor(regionElement);
+    const center = centerOverride || centerFor(regionElement);
     const padding = 12;
     const gap = 10;
     const bubbleWidth = bubble.offsetWidth;
@@ -147,9 +276,7 @@ window.MapStudio.init = (mapElement) => {
     bubble.style.setProperty('--map-studio-bubble-y', `${top}px`);
   };
 
-  const closeBubble = (restoreFocus = true) => {
-    const regionToFocus = selectedRegionElement;
-
+  const resetMap = () => {
     if (selectedRegionElement) {
       selectedRegionElement.classList.remove('is-selected');
       selectedRegionElement = null;
@@ -158,16 +285,15 @@ window.MapStudio.init = (mapElement) => {
     bubble.classList.remove('is-open');
     bubble.setAttribute('aria-hidden', 'true');
     bubbleContent.innerHTML = '';
-
-    if (restoreFocus && regionToFocus && typeof regionToFocus.focus === 'function') {
-      regionToFocus.focus({ preventScroll: true });
-    }
+    resetZoom();
+    blurActiveControl();
   };
 
   const openRegion = (regionElement) => {
     const content = contentFor(regionElement);
 
     if (!content) {
+      resetMap();
       return;
     }
 
@@ -180,9 +306,10 @@ window.MapStudio.init = (mapElement) => {
     bubbleContent.innerHTML = content;
     bubble.classList.add('is-open');
     bubble.setAttribute('aria-hidden', 'false');
+    const zoomTarget = zoomToRegion(regionElement);
 
     window.requestAnimationFrame(() => {
-      positionBubble(regionElement);
+      positionBubble(regionElement, zoomTarget ? zoomTarget.center : null);
     });
   };
 
@@ -204,11 +331,34 @@ window.MapStudio.init = (mapElement) => {
 
   closeButton.addEventListener('click', (event) => {
     event.stopPropagation();
-    closeBubble(true);
+    resetMap();
+  });
+
+  resetButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    resetMap();
+  });
+
+  mapElement.addEventListener('click', (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (bubble.contains(target) || resetButton.contains(target)) {
+      return;
+    }
+
+    if (target.closest('.map-studio__region.is-active')) {
+      return;
+    }
+
+    resetMap();
   });
 
   document.addEventListener('click', (event) => {
-    if (!bubble.classList.contains('is-open')) {
+    if (!isMapActive()) {
       return;
     }
 
@@ -218,22 +368,24 @@ window.MapStudio.init = (mapElement) => {
       return;
     }
 
-    if (bubble.contains(target) || activeRegionElements.some((regionElement) => regionElement.contains(target))) {
+    if (mapElement.contains(target)) {
       return;
     }
 
-    closeBubble(false);
+    resetMap();
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && bubble.classList.contains('is-open')) {
-      closeBubble(true);
+    if (event.key === 'Escape' && isMapActive()) {
+      event.preventDefault();
+      resetMap();
     }
   });
 
   window.addEventListener('resize', () => {
     if (selectedRegionElement && bubble.classList.contains('is-open')) {
-      positionBubble(selectedRegionElement);
+      const zoomTarget = zoomToRegion(selectedRegionElement);
+      positionBubble(selectedRegionElement, zoomTarget ? zoomTarget.center : null);
     }
   });
 

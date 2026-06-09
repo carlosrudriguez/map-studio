@@ -61,7 +61,7 @@ final class Shortcode {
         $instanceId = $this->nextInstanceId($mapId);
         $instanceClass = 'map-studio--instance-' . $instanceId;
 
-        $this->enqueueAssets($instanceClass, $payload['colors']);
+        $this->enqueueAssets($instanceClass, $payload['colors'], $payload['regionColors']);
 
         $svg = new SvgMap($mapDefinition);
         $dataJson = \wp_json_encode($activeRegions, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
@@ -71,7 +71,12 @@ final class Shortcode {
         }
 
         $markup = '<div class="map-studio ' . \esc_attr($instanceClass) . '" data-map-studio-instance="' . \esc_attr($instanceId) . '">';
-        $markup .= $svg->renderForInstance($instanceId, array_keys($activeRegions));
+        $markup .= $svg->renderForInstance($instanceId, array_keys($activeRegions), $payload['regionColors']);
+        $markup .= '<button type="button" class="map-studio__reset" aria-label="' . \esc_attr__('Reset map zoom', 'map-studio') . '" hidden>';
+        $markup .= '<svg class="map-studio__reset-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">';
+        $markup .= '<path d="M7 4H4v3"></path><path d="M17 4h3v3"></path><path d="M20 17v3h-3"></path><path d="M4 17v3h3"></path>';
+        $markup .= '</svg>';
+        $markup .= '</button>';
         $markup .= '<div class="map-studio__bubble" role="dialog" aria-hidden="true">';
         $markup .= '<button type="button" class="map-studio__close" aria-label="' . \esc_attr__('Close map information', 'map-studio') . '">&times;</button>';
         $markup .= '<div class="map-studio__bubble-content" tabindex="-1"></div>';
@@ -84,8 +89,9 @@ final class Shortcode {
 
     /**
      * @param array<string, string> $colors
+     * @param array<string, string> $regionColors
      */
-    private function enqueueAssets(string $instanceClass, array $colors): void {
+    private function enqueueAssets(string $instanceClass, array $colors, array $regionColors): void {
         \wp_enqueue_style(
             'map-studio-frontend',
             MAP_STUDIO_URL . 'assets/css/frontend.css',
@@ -114,7 +120,32 @@ final class Shortcode {
             $colors['bubbleText'] ?? $defaults['bubbleText']
         );
 
+        foreach ($regionColors as $regionKey => $color) {
+            $cleanColor = MapMeta::sanitizeOptionalHexColor($color);
+
+            if ($cleanColor === '') {
+                continue;
+            }
+
+            $css .= sprintf(
+                '.%s .map-studio__region[data-map-studio-region-key="%s"]{--map-studio-region-custom-color:%s;}',
+                $instanceClass,
+                $this->cssAttributeValue($regionKey),
+                $cleanColor
+            );
+        }
+
         \wp_add_inline_style('map-studio-frontend', $css);
+    }
+
+    private function cssAttributeValue(string $value): string {
+        return strtr($value, [
+            "\\" => "\\\\",
+            '"' => '\\"',
+            "\n" => "\\a ",
+            "\r" => "\\d ",
+            "\f" => "\\c ",
+        ]);
     }
 
     private function invalidShortcodeOutput(): string {

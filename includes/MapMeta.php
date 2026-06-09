@@ -23,19 +23,20 @@ final class MapMeta {
     ];
 
     /**
-     * @return array{mapId: string, regions: array<string, string>, colors: array<string, string>}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>}
      */
     public static function defaultPayload(): array {
         return [
             'mapId' => '',
             'regions' => [],
+            'regionColors' => [],
             'colors' => self::DEFAULT_COLORS,
         ];
     }
 
     /**
      * @param array<string, mixed> $payload
-     * @return array{mapId: string, regions: array<string, string>, colors: array<string, string>}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>}
      */
     public static function sanitizePayload(array $payload, string $lockedMapId = '', ?MapDefinition $mapDefinition = null): array {
         $sanitized = self::defaultPayload();
@@ -71,6 +72,24 @@ final class MapMeta {
             }
         }
 
+        $regionColors = isset($payload['regionColors']) && is_array($payload['regionColors']) ? $payload['regionColors'] : [];
+
+        foreach ($regionColors as $regionKey => $color) {
+            if (!is_string($regionKey) || ($mapDefinition !== null && !$mapDefinition->hasShape($regionKey))) {
+                continue;
+            }
+
+            if (!is_scalar($color)) {
+                continue;
+            }
+
+            $cleanColor = self::sanitizeOptionalHexColor((string) $color);
+
+            if ($cleanColor !== '') {
+                $sanitized['regionColors'][$regionKey] = $cleanColor;
+            }
+        }
+
         $colors = isset($payload['colors']) && is_array($payload['colors']) ? $payload['colors'] : [];
 
         foreach (self::DEFAULT_COLORS as $key => $default) {
@@ -82,19 +101,25 @@ final class MapMeta {
     }
 
     public static function sanitizeHexColor(string $value, string $fallback): string {
+        $cleanColor = self::sanitizeOptionalHexColor($value);
+
+        if ($cleanColor !== '') {
+            return $cleanColor;
+        }
+
+        $cleanFallback = self::sanitizeOptionalHexColor($fallback);
+
+        return $cleanFallback !== '' ? $cleanFallback : '#000000';
+    }
+
+    public static function sanitizeOptionalHexColor(string $value): string {
         $normalized = strtolower(trim($value));
 
         if (preg_match('/^#[0-9a-f]{6}$/', $normalized) === 1) {
             return $normalized;
         }
 
-        $fallback = strtolower(trim($fallback));
-
-        if (preg_match('/^#[0-9a-f]{6}$/', $fallback) === 1) {
-            return $fallback;
-        }
-
-        return '#000000';
+        return '';
     }
 
     /**
@@ -108,7 +133,7 @@ final class MapMeta {
     }
 
     /**
-     * @return array{mapId: string, regions: array<string, string>, colors: array<string, string>}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>}
      */
     public static function get(int $postId, ?MapDefinition $mapDefinition = null): array {
         if (!function_exists('get_post_meta')) {

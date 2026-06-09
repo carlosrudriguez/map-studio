@@ -148,6 +148,11 @@ $payload = \MapStudio\MapMeta::sanitizePayload(
             'inactive' => '#111111',
             'hover' => 'blue',
         ],
+        'regionColors' => [
+            'MX-SON' => '#AA5500',
+            'US-WA' => '#445566',
+            'MX-BCN' => 'orange',
+        ],
     ],
     '',
     $maps['MX']
@@ -159,11 +164,15 @@ assert_contract(!isset($payload['regions']['MX-SON']), 'Empty MX-SON content sho
 assert_contract(!isset($payload['regions']['US-WA']), 'Regions from another map should not be saved.');
 assert_contract($payload['colors']['inactive'] === '#111111', 'Valid color override missing.');
 assert_contract($payload['colors']['hover'] === \MapStudio\MapMeta::defaultPayload()['colors']['hover'], 'Invalid hover color should fall back.');
+assert_contract($payload['regionColors']['MX-SON'] === '#aa5500', 'Region color should be saved without content.');
+assert_contract(!isset($payload['regionColors']['US-WA']), 'Region colors from another map should not be saved.');
+assert_contract(!isset($payload['regionColors']['MX-BCN']), 'Invalid region colors should be discarded.');
 
 $lockedPayload = \MapStudio\MapMeta::sanitizePayload(
     [
         'mapId' => 'US',
         'regions' => ['US-WA' => '<p>Washington</p>'],
+        'regionColors' => ['US-WA' => '#112233'],
     ],
     'MX',
     $maps['MX']
@@ -171,26 +180,30 @@ $lockedPayload = \MapStudio\MapMeta::sanitizePayload(
 
 assert_contract($lockedPayload['mapId'] === 'MX', 'Existing map ID must remain locked.');
 assert_contract($lockedPayload['regions'] === [], 'Regions from a different map must not be saved to a locked map.');
+assert_contract($lockedPayload['regionColors'] === [], 'Region colors from a different map must not be saved to a locked map.');
 
 assert_contract(\MapStudio\MapMeta::sanitizeHexColor('#ABCDEF', '#000000') === '#abcdef', 'Uppercase hex should normalize.');
 assert_contract(\MapStudio\MapMeta::sanitizeHexColor('red', '#000000') === '#000000', 'Invalid color should fall back.');
 
 $svg = new \MapStudio\SvgMap($maps['MX']);
-$renderedSvg = $svg->renderForInstance('contract-map', ['MX-DIF']);
+$renderedSvg = $svg->renderForInstance('contract-map', ['MX-DIF'], ['MX-SON' => '#aa5500']);
 assert_contract(strpos($renderedSvg, 'data-map-studio-region-key="MX-DIF"') !== false, 'Rendered SVG should include region keys.');
 assert_contract(strpos($renderedSvg, 'map-studio__region is-active') !== false, 'Active region class missing.');
+assert_contract(strpos($renderedSvg, 'data-map-studio-region-key="MX-SON"') !== false, 'Custom-colored inactive regions should render.');
+assert_contract(strpos($renderedSvg, 'has-custom-color') !== false, 'Custom-colored regions should receive a custom color class.');
 
 $duplicateSvg = new \MapStudio\SvgMap($maps['ASIA']);
 $renderedDuplicateSvg = $duplicateSvg->renderForInstance('contract-asia', ['99--northern-cyprus']);
 assert_contract(strpos($renderedDuplicateSvg, 'data-map-studio-region-key="99--northern-cyprus"') !== false, 'Duplicate SVG IDs should render with stable region keys.');
 
-$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco from JSON meta</p>"},"colors":{"inactive":"#222222"}}';
+$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco from JSON meta</p>"},"regionColors":{"MX-SON":"#123456"},"colors":{"inactive":"#222222"}}';
 $jsonMetaPayload = \MapStudio\MapMeta::get(123, $maps['MX']);
 assert_contract(isset($jsonMetaPayload['regions']['MX-JAL']), 'JSON string meta payload should be decoded.');
+assert_contract($jsonMetaPayload['regionColors']['MX-SON'] === '#123456', 'JSON string meta region colors should be decoded.');
 assert_contract($jsonMetaPayload['colors']['inactive'] === '#222222', 'JSON string meta colors should be decoded.');
 unset($GLOBALS['map_studio_contract_post_meta']);
 
-$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco visible content.</p>"},"colors":{"inactive":"#d1d5db"}}';
+$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco visible content.</p>"},"regionColors":{"MX-SON":"#aa5500"},"colors":{"inactive":"#d1d5db"}}';
 $GLOBALS['map_studio_contract_posts'][10] = (object) [
     'ID' => 10,
     'post_type' => \MapStudio\Admin\MapPostType::POST_TYPE,
@@ -206,6 +219,12 @@ $GLOBALS['map_studio_contract_posts'][11] = (object) [
 ];
 $publishedShortcode = (new \MapStudio\Frontend\Shortcode())->render(['id' => 11]);
 assert_contract(strpos($publishedShortcode, 'data-map-studio-region-key="MX-JAL"') !== false, 'Published maps should render active regions.');
+assert_contract(strpos($publishedShortcode, 'data-map-studio-region-key="MX-SON"') !== false, 'Published maps should render colored regions without content.');
+assert_contract(strpos($publishedShortcode, 'class="map-studio__reset"') !== false, 'Published maps should render an icon-only zoom reset control.');
+assert_contract(strpos($publishedShortcode, 'Reset map zoom') !== false, 'Zoom reset control should have an accessible label.');
+assert_contract(strpos($publishedShortcode, 'M7 4H4v3') !== false, 'Zoom reset control should use the fit-to-map corner icon.');
+$publishedInlineCss = implode('', $GLOBALS['map_studio_contract_inline_styles']['map-studio-frontend'] ?? []);
+assert_contract(strpos($publishedInlineCss, '#aa5500') !== false, 'Published maps should include custom region color CSS.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__data"') !== false, 'Published maps should include data JSON.');
 unset($GLOBALS['map_studio_contract_post_meta'], $GLOBALS['map_studio_contract_posts']);
 
@@ -230,10 +249,22 @@ assert_contract(file_exists(dirname(__DIR__) . '/assets/css/admin.css'), 'Admin 
 assert_contract(file_exists(dirname(__DIR__) . '/assets/js/frontend.js'), 'Frontend JS is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/css/frontend.css'), 'Frontend CSS is missing.');
 
+$adminJs = file_get_contents(dirname(__DIR__) . '/assets/js/admin.js');
+assert_contract(is_string($adminJs), 'Admin JS should be readable.');
+assert_contract(strpos($adminJs, 'map-studio-admin__region-colors-json') !== false, 'Admin JS should synchronize region color JSON.');
+assert_contract(strpos($adminJs, 'map_studio_region_color') !== false, 'Admin JS should manage the selected region color picker.');
+
 $frontendJs = file_get_contents(dirname(__DIR__) . '/assets/js/frontend.js');
 assert_contract(is_string($frontendJs), 'Frontend JS should be readable.');
 assert_contract(strpos($frontendJs, 'window.MapStudio') !== false, 'Frontend JS namespace should be renamed.');
-assert_contract(strpos($frontendJs, 'closeBubble(false)') !== false, 'Outside clicks should close without restoring map focus.');
+assert_contract(strpos($frontendJs, 'resetMap') !== false, 'Frontend JS should expose map reset behavior.');
+assert_contract(strpos($frontendJs, 'zoomToRegion') !== false, 'Frontend JS should zoom toward selected regions.');
 assert_contract(strpos($frontendJs, 'getPointAtLength') !== false, 'Bubble anchor should use path geometry sampling.');
+
+$frontendCss = file_get_contents(dirname(__DIR__) . '/assets/css/frontend.css');
+assert_contract(is_string($frontendCss), 'Frontend CSS should be readable.');
+assert_contract(strpos($frontendCss, '.map-studio__region:focus') !== false, 'Frontend CSS should control SVG region focus outlines.');
+assert_contract(strpos($frontendCss, '.map-studio__reset') !== false, 'Frontend CSS should style the icon-only zoom reset control.');
+assert_contract(strpos($frontendCss, '--map-studio-zoom-transition: 650ms') !== false, 'Frontend CSS should use the slower zoom transition.');
 
 echo 'All contract checks passed.' . PHP_EOL;

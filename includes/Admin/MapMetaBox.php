@@ -51,23 +51,30 @@ final class MapMetaBox {
         }
 
         $regions = $mapDefinition !== null ? MapMeta::activeRegions($payload, $mapDefinition) : [];
+        $regionColors = $mapDefinition !== null ? $payload['regionColors'] : [];
         $shapes = $mapDefinition !== null ? $mapDefinition->shapes() : [];
         $selectedRegionKey = $shapes[0]['key'] ?? '';
         $initialEditorContent = $selectedRegionKey !== '' ? ($regions[$selectedRegionKey] ?? '') : '';
         $regionsJson = $this->jsonEncode($regions, '{}');
+        $regionColorsJson = $this->jsonEncode($regionColors, '{}');
+        $defaultRegionColor = MapMeta::sanitizeHexColor($payload['colors']['active'] ?? '', MapMeta::defaultPayload()['colors']['active']);
 
         \wp_nonce_field(self::NONCE_ACTION, self::NONCE_NAME);
 
-        echo '<div class="map-studio-admin" data-map-studio-editor-id="map_studio_editor" data-map-studio-initial-region-key="' . \esc_attr($selectedRegionKey) . '" data-map-studio-map-locked="' . \esc_attr($mapDefinition !== null ? 'true' : 'false') . '">';
+        echo '<div class="map-studio-admin" data-map-studio-editor-id="map_studio_editor" data-map-studio-initial-region-key="' . \esc_attr($selectedRegionKey) . '" data-map-studio-map-locked="' . \esc_attr($mapDefinition !== null ? 'true' : 'false') . '" data-map-studio-default-region-color="' . \esc_attr($defaultRegionColor) . '">';
         echo '<textarea class="map-studio-admin__region-json" name="map_studio_regions_json" hidden>' . \esc_textarea($regionsJson) . '</textarea>';
+        echo '<textarea class="map-studio-admin__region-colors-json" name="map_studio_region_colors_json" hidden>' . \esc_textarea($regionColorsJson) . '</textarea>';
         echo '<script type="application/json" class="map-studio-admin__maps-data">' . $this->mapsJson($maps) . '</script>';
         $this->renderMapSelector($maps, $mapDefinition);
-        echo '<p class="map-studio-admin__summary" data-map-studio-summary>' . \esc_html($this->summaryText(count($regions), count($shapes), $mapDefinition !== null)) . '</p>';
+        echo '<p class="map-studio-admin__summary" data-map-studio-summary>' . \esc_html($this->summaryText(count($regions), count($regionColors), count($shapes), $mapDefinition !== null)) . '</p>';
         echo '<div class="map-studio-admin__layout">';
         echo '<div class="map-studio-admin__regions" role="list">';
-        $this->renderRegionButtons($shapes, $regions, $selectedRegionKey);
+        $this->renderRegionButtons($shapes, $regions, $regionColors, $selectedRegionKey);
         echo '</div>';
         echo '<div class="map-studio-admin__editor">';
+        if (function_exists('current_user_can') && \current_user_can('manage_options')) {
+            $this->renderRegionColorControl($selectedRegionKey, $regionColors, $defaultRegionColor);
+        }
         $this->renderEditor($initialEditorContent);
         echo '</div>';
         echo '</div>';
@@ -113,9 +120,14 @@ final class MapMetaBox {
         }
 
         $colors = $existingPayload['colors'];
+        $regionColors = $existingPayload['regionColors'];
 
         if (\current_user_can('manage_options') && isset($_POST['map_studio_colors']) && is_array($_POST['map_studio_colors'])) {
             $colors = $this->postedColors();
+        }
+
+        if (\current_user_can('manage_options') && isset($_POST['map_studio_region_colors_json'])) {
+            $regionColors = $this->postedRegionColors();
         }
 
         MapMeta::save(
@@ -123,6 +135,7 @@ final class MapMetaBox {
             [
                 'mapId' => $mapDefinition->id(),
                 'regions' => $this->postedRegions(),
+                'regionColors' => $regionColors,
                 'colors' => $colors,
             ],
             $lockedMapId,
@@ -185,8 +198,9 @@ final class MapMetaBox {
     /**
      * @param array<int, array{key: string, svgId: string, label: string}> $shapes
      * @param array<string, string> $regions
+     * @param array<string, string> $regionColors
      */
-    private function renderRegionButtons(array $shapes, array $regions, string $selectedRegionKey): void {
+    private function renderRegionButtons(array $shapes, array $regions, array $regionColors, string $selectedRegionKey): void {
         foreach ($shapes as $shape) {
             $regionKey = $shape['key'];
             $classes = ['map-studio-admin__region-button'];
@@ -199,11 +213,38 @@ final class MapMetaBox {
                 $classes[] = 'has-content';
             }
 
+            if (isset($regionColors[$regionKey])) {
+                $classes[] = 'has-custom-color';
+            }
+
             echo '<button type="button" class="' . \esc_attr(implode(' ', $classes)) . '" data-map-studio-region-key="' . \esc_attr($regionKey) . '" aria-pressed="' . \esc_attr($regionKey === $selectedRegionKey ? 'true' : 'false') . '">';
             echo '<span class="map-studio-admin__region-label">' . \esc_html($shape['label']) . '</span>';
             echo '<span class="map-studio-admin__status" aria-hidden="true"></span>';
             echo '</button>';
         }
+    }
+
+    /**
+     * @param array<string, string> $regionColors
+     */
+    private function renderRegionColorControl(string $selectedRegionKey, array $regionColors, string $defaultRegionColor): void {
+        $customColor = $selectedRegionKey !== '' ? ($regionColors[$selectedRegionKey] ?? '') : '';
+        $hasCustomColor = $customColor !== '';
+        $value = $hasCustomColor ? $customColor : $defaultRegionColor;
+        $disabled = $selectedRegionKey === '' ? ' disabled' : '';
+        $checked = $hasCustomColor ? ' checked' : '';
+
+        echo '<fieldset class="map-studio-admin__region-color">';
+        echo '<legend>' . \esc_html__('Selected Shape Color', 'map-studio') . '</legend>';
+        echo '<label class="map-studio-admin__region-color-toggle" for="map_studio_region_color_enabled">';
+        echo '<input type="checkbox" id="map_studio_region_color_enabled"' . $checked . $disabled . '>';
+        echo '<span>' . \esc_html__('Use custom color', 'map-studio') . '</span>';
+        echo '</label>';
+        echo '<label class="map-studio-admin__region-color-picker" for="map_studio_region_color">';
+        echo '<span>' . \esc_html__('Shape color', 'map-studio') . '</span>';
+        echo '<input type="color" id="map_studio_region_color" value="' . \esc_attr($value) . '"' . $disabled . '>';
+        echo '</label>';
+        echo '</fieldset>';
     }
 
     private function renderEditor(string $initialEditorContent): void {
@@ -267,12 +308,12 @@ final class MapMetaBox {
         return $this->jsonEncode($data, '{}');
     }
 
-    private function summaryText(int $filledCount, int $shapeCount, bool $hasMap): string {
+    private function summaryText(int $filledCount, int $coloredCount, int $shapeCount, bool $hasMap): string {
         if (!$hasMap) {
             return __('Select a map to begin adding content.', 'map-studio');
         }
 
-        return sprintf(__('%1$d of %2$d regions have content', 'map-studio'), $filledCount, $shapeCount);
+        return sprintf(__('%1$d of %2$d regions have content; %3$d have custom colors', 'map-studio'), $filledCount, $shapeCount, $coloredCount);
     }
 
     /**
@@ -280,6 +321,16 @@ final class MapMetaBox {
      */
     private function postedRegions(): array {
         $json = $this->postedString('map_studio_regions_json');
+        $decoded = json_decode($json, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function postedRegionColors(): array {
+        $json = $this->postedString('map_studio_region_colors_json');
         $decoded = json_decode($json, true);
 
         return is_array($decoded) ? $decoded : [];

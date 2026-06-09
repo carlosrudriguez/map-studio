@@ -36,8 +36,9 @@ final class SvgMap {
 
     /**
      * @param array<int, string> $activeRegionKeys
+     * @param array<string, string> $customRegionColors
      */
-    public function renderForInstance(string $instanceId, array $activeRegionKeys): string {
+    public function renderForInstance(string $instanceId, array $activeRegionKeys, array $customRegionColors = []): string {
         $document = $this->loadDocument();
         $root = $document->documentElement;
 
@@ -47,6 +48,7 @@ final class SvgMap {
 
         $this->appendClasses($root, ['map-studio__svg']);
         $activeRegions = array_fill_keys($activeRegionKeys, true);
+        $customColorRegions = array_fill_keys(array_keys($customRegionColors), true);
         $pathIndex = 0;
 
         foreach ($document->getElementsByTagName('path') as $path) {
@@ -66,8 +68,15 @@ final class SvgMap {
             $path->setAttribute('data-map-studio-region-key', $regionKey);
             $path->setAttribute('id', $instanceId . '-' . $regionKey . '-' . $pathIndex);
 
+            $classes = ['map-studio__region'];
+
+            if (isset($customColorRegions[$regionKey])) {
+                $classes[] = 'has-custom-color';
+            }
+
             if (isset($activeRegions[$regionKey])) {
-                $this->appendClasses($path, ['map-studio__region', 'is-active']);
+                $classes[] = 'is-active';
+                $this->appendClasses($path, $classes);
                 $path->setAttribute('role', 'button');
                 $path->setAttribute('tabindex', '0');
                 $path->setAttribute('aria-label', $this->mapDefinition->shapeLabel($regionKey) ?? $label);
@@ -75,7 +84,8 @@ final class SvgMap {
                 continue;
             }
 
-            $this->appendClasses($path, ['map-studio__region', 'is-inactive']);
+            $classes[] = 'is-inactive';
+            $this->appendClasses($path, $classes);
             $path->removeAttribute('role');
             $path->removeAttribute('tabindex');
             $path->removeAttribute('aria-label');

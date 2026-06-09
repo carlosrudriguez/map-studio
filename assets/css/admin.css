@@ -102,6 +102,14 @@
   background: var(--map-studio-admin-filled);
 }
 
+.map-studio-admin__region-button.has-custom-color .map-studio-admin__status {
+  box-shadow: 0 0 0 2px var(--map-studio-admin-accent);
+}
+
+.map-studio-admin__region-button.has-custom-color:not(.has-content) .map-studio-admin__status {
+  background: var(--map-studio-admin-accent);
+}
+
 .map-studio-admin__region-label {
   overflow-wrap: anywhere;
 }
@@ -115,7 +123,48 @@
 }
 
 .map-studio-admin__editor {
+  display: grid;
+  gap: var(--map-studio-admin-space-md);
   min-width: 0;
+}
+
+.map-studio-admin__region-color {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--map-studio-admin-space-md);
+  margin: 0;
+  padding: var(--map-studio-admin-space-md);
+  border: 1px solid var(--map-studio-admin-border);
+  border-radius: var(--map-studio-admin-radius-sm);
+  background: var(--map-studio-admin-surface-alt);
+}
+
+.map-studio-admin__region-color.is-disabled {
+  opacity: 0.7;
+}
+
+.map-studio-admin__region-color legend {
+  padding: 0 var(--map-studio-admin-space-xs);
+  font-weight: 600;
+}
+
+.map-studio-admin__region-color-toggle,
+.map-studio-admin__region-color-picker {
+  display: grid;
+  gap: var(--map-studio-admin-space-xs);
+  color: var(--map-studio-admin-muted);
+  font-weight: 600;
+}
+
+.map-studio-admin__region-color-toggle {
+  align-content: center;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.map-studio-admin__region-color-picker input {
+  width: 100%;
+  min-height: 36px;
 }
 
 .map-studio-admin__colors {

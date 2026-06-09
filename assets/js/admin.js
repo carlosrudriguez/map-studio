@@ -1,6 +1,6 @@
 /**
  * Powers the Map Studio admin region editor.
- * It keeps one WordPress editor synchronized with JSON content for the selected map.
+ * It keeps content and custom shape colors synchronized with hidden JSON fields.
  */
 
 (() => {
@@ -19,17 +19,27 @@
 
   const normalizeContent = (content) => (content || '').trim();
 
+  const normalizeColor = (color) => {
+    const value = (color || '').trim().toLowerCase();
+    return /^#[0-9a-f]{6}$/.test(value) ? value : '';
+  };
+
   const initAdmin = (root) => {
     const jsonField = root.querySelector('.map-studio-admin__region-json');
+    const colorJsonField = root.querySelector('.map-studio-admin__region-colors-json');
     const mapsDataElement = root.querySelector('.map-studio-admin__maps-data');
     const summary = root.querySelector('[data-map-studio-summary]');
     const regionList = root.querySelector('.map-studio-admin__regions');
     const mapSelect = root.querySelector('.map-studio-admin__map-select');
     const mapField = root.querySelector('[name="map_studio_map_id"]');
+    const colorPanel = root.querySelector('.map-studio-admin__region-color');
+    const colorToggle = root.querySelector('#map_studio_region_color_enabled');
+    const colorInput = root.querySelector('#map_studio_region_color');
     const form = root.closest('form');
     const editorId = root.dataset.mapStudioEditorId || 'map_studio_editor';
     const textarea = document.getElementById(editorId);
     const isLocked = root.dataset.mapStudioMapLocked === 'true';
+    const defaultRegionColor = normalizeColor(root.dataset.mapStudioDefaultRegionColor) || '#374151';
 
     if (!jsonField || !mapsDataElement || !summary || !regionList || !mapField || !textarea) {
       return;
@@ -37,6 +47,7 @@
 
     const mapsData = parseJsonText(mapsDataElement.textContent || '{}', {});
     let contentByRegion = parseJsonField(jsonField);
+    let colorByRegion = colorJsonField ? parseJsonField(colorJsonField) : {};
     let selectedMapId = mapField.value || '';
     let selectedRegionKey = root.dataset.mapStudioInitialRegionKey || '';
     let buttons = [];
@@ -85,6 +96,14 @@
 
     const regionHasContent = (regionKey) => normalizeContent(contentByRegion[regionKey]) !== '';
 
+    const regionHasCustomColor = (regionKey) => normalizeColor(colorByRegion[regionKey] || '') !== '';
+
+    const syncColorJsonField = () => {
+      if (colorJsonField) {
+        colorJsonField.value = JSON.stringify(colorByRegion);
+      }
+    };
+
     const updateSummary = () => {
       if (!selectedMapId) {
         summary.textContent = 'Select a map to begin adding content.';
@@ -92,7 +111,8 @@
       }
 
       const filledCount = buttons.filter((button) => regionHasContent(button.dataset.mapStudioRegionKey || '')).length;
-      summary.textContent = `${filledCount} of ${buttons.length} regions have content`;
+      const coloredCount = buttons.filter((button) => regionHasCustomColor(button.dataset.mapStudioRegionKey || '')).length;
+      summary.textContent = `${filledCount} of ${buttons.length} regions have content; ${coloredCount} have custom colors`;
     };
 
     const updateButtons = () => {
@@ -100,10 +120,26 @@
         const regionKey = button.dataset.mapStudioRegionKey || '';
         button.classList.toggle('is-selected', regionKey === selectedRegionKey);
         button.classList.toggle('has-content', regionHasContent(regionKey));
+        button.classList.toggle('has-custom-color', regionHasCustomColor(regionKey));
         button.setAttribute('aria-pressed', regionKey === selectedRegionKey ? 'true' : 'false');
       });
 
       updateSummary();
+    };
+
+    const updateRegionColorControls = () => {
+      if (!colorPanel || !colorToggle || !colorInput) {
+        return;
+      }
+
+      const hasRegion = selectedRegionKey !== '';
+      const customColor = hasRegion ? normalizeColor(colorByRegion[selectedRegionKey] || '') : '';
+
+      colorPanel.classList.toggle('is-disabled', !hasRegion);
+      colorToggle.disabled = !hasRegion;
+      colorInput.disabled = !hasRegion;
+      colorToggle.checked = customColor !== '';
+      colorInput.value = customColor || defaultRegionColor;
     };
 
     const storeSelectedContent = () => {
@@ -123,14 +159,33 @@
       updateButtons();
     };
 
+    const storeSelectedColor = () => {
+      if (!colorJsonField || !colorToggle || !colorInput || !selectedRegionKey) {
+        return;
+      }
+
+      const color = normalizeColor(colorInput.value);
+
+      if (colorToggle.checked && color !== '') {
+        colorByRegion[selectedRegionKey] = color;
+      } else {
+        delete colorByRegion[selectedRegionKey];
+      }
+
+      syncColorJsonField();
+      updateButtons();
+    };
+
     const selectRegion = (regionKey) => {
       if (!regionKey || regionKey === selectedRegionKey) {
         return;
       }
 
       storeSelectedContent();
+      storeSelectedColor();
       selectedRegionKey = regionKey;
       setEditorContent(contentByRegion[selectedRegionKey] || '');
+      updateRegionColorControls();
       updateButtons();
     };
 
@@ -172,6 +227,7 @@
         selectedRegionKey = shapes[0] ? shapes[0].key || '' : '';
       }
 
+      updateRegionColorControls();
       updateButtons();
     };
 
@@ -189,13 +245,23 @@
         selectedMapId = mapSelect.value || '';
         selectedRegionKey = '';
         contentByRegion = {};
+        colorByRegion = {};
         jsonField.value = '{}';
+        syncColorJsonField();
         renderRegionButtons();
         setEditorContent(selectedRegionKey ? contentByRegion[selectedRegionKey] || '' : '');
       });
     }
 
     textarea.addEventListener('input', storeSelectedContent);
+
+    if (colorInput && colorToggle) {
+      colorInput.addEventListener('input', () => {
+        colorToggle.checked = true;
+        storeSelectedColor();
+      });
+      colorToggle.addEventListener('change', storeSelectedColor);
+    }
 
     if (window.tinymce && typeof window.tinymce.on === 'function') {
       window.tinymce.on('AddEditor', (event) => {
@@ -208,11 +274,15 @@
     bindTinyEditor(getTinyEditor());
 
     if (form) {
-      form.addEventListener('submit', storeSelectedContent);
+      form.addEventListener('submit', () => {
+        storeSelectedContent();
+        storeSelectedColor();
+      });
     }
 
     renderRegionButtons();
     setEditorContent(selectedRegionKey ? contentByRegion[selectedRegionKey] || '' : '');
+    updateRegionColorControls();
     updateButtons();
   };
 
