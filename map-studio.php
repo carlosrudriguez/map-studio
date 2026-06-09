@@ -33,6 +33,7 @@ $map_studio_files = [
     'includes/Admin/Menu.php',
     'includes/Admin/MapPostType.php',
     'includes/Admin/MapListTable.php',
+    'includes/Admin/MapSettingsFields.php',
     'includes/Admin/MapMetaBox.php',
     'includes/Frontend/Shortcode.php',
 ];

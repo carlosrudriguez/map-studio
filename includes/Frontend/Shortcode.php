@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace MapStudio\Frontend;
 
 use MapStudio\Admin\MapPostType;
+use MapStudio\MapDefinition;
 use MapStudio\MapMeta;
 use MapStudio\MapRegistry;
 use MapStudio\SvgMap;
@@ -60,6 +61,13 @@ final class Shortcode {
         $activeRegions = MapMeta::activeRegions($payload, $mapDefinition);
         $instanceId = $this->nextInstanceId($mapId);
         $instanceClass = 'map-studio--instance-' . $instanceId;
+        $hasRegionList = (bool) $payload['regionListEnabled'] && $activeRegions !== [];
+        $classes = ['map-studio', $instanceClass];
+
+        if ($hasRegionList) {
+            $classes[] = 'has-region-list';
+            $classes[] = 'is-region-list-' . $payload['regionListPosition'];
+        }
 
         $this->enqueueAssets($instanceClass, $payload['colors'], $payload['regionColors']);
 
@@ -70,7 +78,9 @@ final class Shortcode {
             $dataJson = '{}';
         }
 
-        $markup = '<div class="map-studio ' . \esc_attr($instanceClass) . '" data-map-studio-instance="' . \esc_attr($instanceId) . '">';
+        $markup = '<div class="' . \esc_attr(implode(' ', $classes)) . '" data-map-studio-instance="' . \esc_attr($instanceId) . '">';
+        $markup .= '<div class="map-studio__body">';
+        $markup .= '<div class="map-studio__viewport">';
         $markup .= $svg->renderForInstance($instanceId, array_keys($activeRegions), $payload['regionColors']);
         $markup .= '<button type="button" class="map-studio__reset" aria-label="' . \esc_attr__('Reset map zoom', 'map-studio') . '" hidden>';
         $markup .= '<svg class="map-studio__reset-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">';
@@ -83,6 +93,39 @@ final class Shortcode {
         $markup .= '</div>';
         $markup .= '<script type="application/json" class="map-studio__data">' . $dataJson . '</script>';
         $markup .= '</div>';
+
+        if ($hasRegionList) {
+            $markup .= $this->renderRegionList($mapDefinition, $activeRegions);
+        }
+
+        $markup .= '</div>';
+        $markup .= '</div>';
+
+        return $markup;
+    }
+
+    /**
+     * @param array<string, string> $activeRegions
+     */
+    private function renderRegionList(MapDefinition $mapDefinition, array $activeRegions): string {
+        $activeRegionKeys = array_fill_keys(array_keys($activeRegions), true);
+        $markup = '<aside class="map-studio__region-list" aria-label="' . \esc_attr__('Map regions', 'map-studio') . '">';
+        $markup .= '<div class="map-studio__region-list-items" role="list">';
+
+        foreach ($mapDefinition->shapes() as $shape) {
+            $regionKey = $shape['key'];
+
+            if (!isset($activeRegionKeys[$regionKey])) {
+                continue;
+            }
+
+            $markup .= '<button type="button" class="map-studio__region-list-button" data-map-studio-region-key="' . \esc_attr($regionKey) . '" aria-pressed="false">';
+            $markup .= \esc_html($shape['label']);
+            $markup .= '</button>';
+        }
+
+        $markup .= '</div>';
+        $markup .= '</aside>';
 
         return $markup;
     }

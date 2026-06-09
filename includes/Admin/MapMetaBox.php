@@ -66,6 +66,7 @@ final class MapMetaBox {
         echo '<textarea class="map-studio-admin__region-colors-json" name="map_studio_region_colors_json" hidden>' . \esc_textarea($regionColorsJson) . '</textarea>';
         echo '<script type="application/json" class="map-studio-admin__maps-data">' . $this->mapsJson($maps) . '</script>';
         $this->renderMapSelector($maps, $mapDefinition);
+        MapSettingsFields::renderRegionListToggle((bool) $payload['regionListEnabled'], $payload['regionListPosition']);
         echo '<p class="map-studio-admin__summary" data-map-studio-summary>' . \esc_html($this->summaryText(count($regions), count($regionColors), count($shapes), $mapDefinition !== null)) . '</p>';
         echo '<div class="map-studio-admin__layout">';
         echo '<div class="map-studio-admin__regions" role="list">';
@@ -137,6 +138,8 @@ final class MapMetaBox {
                 'regions' => $this->postedRegions(),
                 'regionColors' => $regionColors,
                 'colors' => $colors,
+                'regionListEnabled' => isset($_POST['map_studio_region_list_enabled']) ? '1' : '0',
+                'regionListPosition' => $this->postedString('map_studio_region_list_position'),
             ],
             $lockedMapId,
             $mapDefinition

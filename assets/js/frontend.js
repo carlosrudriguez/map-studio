@@ -16,6 +16,7 @@ window.MapStudio.init = (mapElement) => {
   const closeButton = mapElement.querySelector('.map-studio__close');
   const resetButton = mapElement.querySelector('.map-studio__reset');
   const svgElement = mapElement.querySelector('.map-studio__svg');
+  const viewport = mapElement.querySelector('.map-studio__viewport') || mapElement;
 
   if (!dataElement || !bubble || !bubbleContent || !closeButton || !resetButton || !svgElement) {
     return;
@@ -33,6 +34,7 @@ window.MapStudio.init = (mapElement) => {
   }
 
   const activeRegionElements = Array.from(mapElement.querySelectorAll('.map-studio__region.is-active'));
+  const regionListButtons = Array.from(mapElement.querySelectorAll('.map-studio__region-list-button'));
   const zoomSettings = { minScale: 1.6, maxScale: 3.4, viewportRatio: 0.44 };
 
   const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max));
@@ -44,12 +46,13 @@ window.MapStudio.init = (mapElement) => {
 
   const blurActiveControl = () => {
     const activeElement = document.activeElement;
+    const activeControlHasFocus = activeElement && typeof activeElement.blur === 'function' && (
+      closeButton.contains(activeElement) ||
+      resetButton.contains(activeElement) ||
+      regionListButtons.some((button) => button.contains(activeElement))
+    );
 
-    if (
-      activeElement &&
-      typeof activeElement.blur === 'function' &&
-      (closeButton.contains(activeElement) || resetButton.contains(activeElement))
-    ) {
+    if (activeControlHasFocus) {
       activeElement.blur();
     }
   };
@@ -61,12 +64,7 @@ window.MapStudio.init = (mapElement) => {
       .map((value) => Number(value));
 
     if (values.length === 4 && values.every((value) => Number.isFinite(value)) && values[2] > 0 && values[3] > 0) {
-      return {
-        x: values[0],
-        y: values[1],
-        width: values[2],
-        height: values[3],
-      };
+      return { x: values[0], y: values[1], width: values[2], height: values[3] };
     }
 
     return {
@@ -80,10 +78,7 @@ window.MapStudio.init = (mapElement) => {
   const svgDisplaySize = () => {
     const rect = svgElement.getBoundingClientRect();
 
-    return {
-      width: svgElement.clientWidth || rect.width / currentZoomScale || 1,
-      height: svgElement.clientHeight || rect.height / currentZoomScale || 1,
-    };
+    return { width: svgElement.clientWidth || rect.width / currentZoomScale || 1, height: svgElement.clientHeight || rect.height / currentZoomScale || 1 };
   };
 
   const zoomTargetFor = (regionElement) => {
@@ -105,7 +100,7 @@ window.MapStudio.init = (mapElement) => {
 
     const viewBox = svgViewBox();
     const size = svgDisplaySize();
-    const mapWidth = mapElement.clientWidth || size.width;
+    const mapWidth = viewport.clientWidth || size.width;
     const mapHeight = size.height;
     const unitX = size.width / viewBox.width;
     const unitY = size.height / viewBox.height;
@@ -123,15 +118,7 @@ window.MapStudio.init = (mapElement) => {
     const x = clamp(mapWidth / 2 - targetX * scale, minX, 0);
     const y = clamp(mapHeight / 2 - targetY * scale, minY, 0);
 
-    return {
-      scale,
-      x,
-      y,
-      center: {
-        x: targetX * scale + x,
-        y: targetY * scale + y,
-      },
-    };
+    return { scale, x, y, center: { x: targetX * scale + x, y: targetY * scale + y } };
   };
 
   const setMapZoom = (scale, x, y) => {
@@ -151,9 +138,7 @@ window.MapStudio.init = (mapElement) => {
     mapElement.style.setProperty('--map-studio-zoom-y', `${y}px`);
   };
 
-  const resetZoom = () => {
-    setMapZoom(1, 0, 0);
-  };
+  const resetZoom = () => setMapZoom(1, 0, 0);
 
   const zoomToRegion = (regionElement) => {
     const target = zoomTargetFor(regionElement);
@@ -168,31 +153,25 @@ window.MapStudio.init = (mapElement) => {
   };
 
   const fallbackCenterFor = (regionElement) => {
-    const mapRect = mapElement.getBoundingClientRect();
+    const mapRect = viewport.getBoundingClientRect();
     const regionRect = regionElement.getBoundingClientRect();
 
-    return {
-      x: regionRect.left + regionRect.width / 2 - mapRect.left,
-      y: regionRect.top + regionRect.height / 2 - mapRect.top,
-    };
+    return { x: regionRect.left + regionRect.width / 2 - mapRect.left, y: regionRect.top + regionRect.height / 2 - mapRect.top };
   };
 
   const transformPointToMap = (point, matrix) => {
-    const mapRect = mapElement.getBoundingClientRect();
+    const mapRect = viewport.getBoundingClientRect();
     const screenPoint = point.matrixTransform(matrix);
 
-    return {
-      x: screenPoint.x - mapRect.left,
-      y: screenPoint.y - mapRect.top,
-    };
+    return { x: screenPoint.x - mapRect.left, y: screenPoint.y - mapRect.top };
   };
 
   const sampledPathCenterFor = (regionElement, matrix) => {
-    if (
-      typeof regionElement.getTotalLength !== 'function' ||
+    const lacksPathSampling = typeof regionElement.getTotalLength !== 'function' ||
       typeof regionElement.getPointAtLength !== 'function' ||
-      typeof svgElement.createSVGPoint !== 'function'
-    ) {
+      typeof svgElement.createSVGPoint !== 'function';
+
+    if (lacksPathSampling) {
       return null;
     }
 
@@ -220,11 +199,11 @@ window.MapStudio.init = (mapElement) => {
   };
 
   const centerFor = (regionElement) => {
-    if (
-      typeof svgElement.createSVGPoint !== 'function' ||
+    const lacksSvgGeometry = typeof svgElement.createSVGPoint !== 'function' ||
       typeof regionElement.getBBox !== 'function' ||
-      typeof regionElement.getScreenCTM !== 'function'
-    ) {
+      typeof regionElement.getScreenCTM !== 'function';
+
+    if (lacksSvgGeometry) {
       return fallbackCenterFor(regionElement);
     }
 
@@ -254,7 +233,7 @@ window.MapStudio.init = (mapElement) => {
   };
 
   const positionBubble = (regionElement, centerOverride = null) => {
-    const mapRect = mapElement.getBoundingClientRect();
+    const mapRect = viewport.getBoundingClientRect();
     const center = centerOverride || centerFor(regionElement);
     const padding = 12;
     const gap = 10;
@@ -276,12 +255,22 @@ window.MapStudio.init = (mapElement) => {
     bubble.style.setProperty('--map-studio-bubble-y', `${top}px`);
   };
 
+  const setSelectedListButton = (regionKey) => {
+    regionListButtons.forEach((button) => {
+      const isSelected = (button.getAttribute('data-map-studio-region-key') || '') === regionKey;
+
+      button.classList.toggle('is-selected', isSelected);
+      button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    });
+  };
+
   const resetMap = () => {
     if (selectedRegionElement) {
       selectedRegionElement.classList.remove('is-selected');
       selectedRegionElement = null;
     }
 
+    setSelectedListButton('');
     bubble.classList.remove('is-open');
     bubble.setAttribute('aria-hidden', 'true');
     bubbleContent.innerHTML = '';
@@ -303,6 +292,7 @@ window.MapStudio.init = (mapElement) => {
 
     selectedRegionElement = regionElement;
     selectedRegionElement.classList.add('is-selected');
+    setSelectedListButton(regionKeyFor(regionElement));
     bubbleContent.innerHTML = content;
     bubble.classList.add('is-open');
     bubble.setAttribute('aria-hidden', 'false');
@@ -329,6 +319,19 @@ window.MapStudio.init = (mapElement) => {
     });
   });
 
+  regionListButtons.forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+
+      const regionKey = button.getAttribute('data-map-studio-region-key') || '';
+      const regionElement = activeRegionElements.find((activeRegionElement) => regionKeyFor(activeRegionElement) === regionKey);
+
+      if (regionElement) {
+        openRegion(regionElement);
+      }
+    });
+  });
+
   closeButton.addEventListener('click', (event) => {
     event.stopPropagation();
     resetMap();
@@ -346,7 +349,7 @@ window.MapStudio.init = (mapElement) => {
       return;
     }
 
-    if (bubble.contains(target) || resetButton.contains(target)) {
+    if (bubble.contains(target) || resetButton.contains(target) || target.closest('.map-studio__region-list')) {
       return;
     }
 
@@ -392,8 +395,4 @@ window.MapStudio.init = (mapElement) => {
   mapElement.dataset.mapStudioReady = 'true';
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.map-studio').forEach((mapElement) => {
-    window.MapStudio.init(mapElement);
-  });
-});
+document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('.map-studio').forEach((mapElement) => window.MapStudio.init(mapElement)));

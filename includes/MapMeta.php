@@ -23,7 +23,7 @@ final class MapMeta {
     ];
 
     /**
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string}
      */
     public static function defaultPayload(): array {
         return [
@@ -31,12 +31,14 @@ final class MapMeta {
             'regions' => [],
             'regionColors' => [],
             'colors' => self::DEFAULT_COLORS,
+            'regionListEnabled' => false,
+            'regionListPosition' => 'right',
         ];
     }
 
     /**
      * @param array<string, mixed> $payload
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string}
      */
     public static function sanitizePayload(array $payload, string $lockedMapId = '', ?MapDefinition $mapDefinition = null): array {
         $sanitized = self::defaultPayload();
@@ -97,6 +99,9 @@ final class MapMeta {
             $sanitized['colors'][$key] = self::sanitizeHexColor($value, $default);
         }
 
+        $sanitized['regionListEnabled'] = self::sanitizeBoolean($payload['regionListEnabled'] ?? false);
+        $sanitized['regionListPosition'] = self::sanitizeRegionListPosition($payload['regionListPosition'] ?? 'right');
+
         return $sanitized;
     }
 
@@ -133,7 +138,7 @@ final class MapMeta {
     }
 
     /**
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string}
      */
     public static function get(int $postId, ?MapDefinition $mapDefinition = null): array {
         if (!function_exists('get_post_meta')) {
@@ -178,6 +183,32 @@ final class MapMeta {
         $mapId = strtoupper(trim($mapId));
 
         return preg_match('/^[A-Z0-9_-]+$/', $mapId) === 1 ? $mapId : '';
+    }
+
+    private static function sanitizeBoolean(mixed $value): bool {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (int) $value === 1;
+        }
+
+        if (is_string($value)) {
+            return in_array(strtolower(trim($value)), ['1', 'true', 'yes', 'on'], true);
+        }
+
+        return false;
+    }
+
+    private static function sanitizeRegionListPosition(mixed $value): string {
+        if (!is_scalar($value)) {
+            return 'right';
+        }
+
+        $position = strtolower(trim((string) $value));
+
+        return in_array($position, ['left', 'right'], true) ? $position : 'right';
     }
 
     private static function sanitizeEditorHtml(string $content): string {
