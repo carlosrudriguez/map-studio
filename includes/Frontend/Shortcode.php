@@ -143,9 +143,17 @@ final class Shortcode {
         );
 
         \wp_enqueue_script(
+            'map-studio-viewbox-animation',
+            MAP_STUDIO_URL . 'assets/js/viewbox-animation.js',
+            [],
+            MAP_STUDIO_VERSION,
+            true
+        );
+
+        \wp_enqueue_script(
             'map-studio-frontend',
             MAP_STUDIO_URL . 'assets/js/frontend.js',
-            [],
+            ['map-studio-viewbox-animation'],
             MAP_STUDIO_VERSION,
             true
         );

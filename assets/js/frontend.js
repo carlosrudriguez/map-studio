@@ -22,9 +22,12 @@ window.MapStudio.init = (mapElement) => {
     return;
   }
 
+  if (!window.MapStudioViewBoxAnimation || typeof window.MapStudioViewBoxAnimation.create !== 'function') {
+    return;
+  }
+
   let contentByRegion = {};
   let selectedRegionElement = null;
-  let currentZoomScale = 1;
 
   try {
     const parsed = JSON.parse(dataElement.textContent || '{}');
@@ -75,13 +78,10 @@ window.MapStudio.init = (mapElement) => {
     };
   };
 
-  const svgDisplaySize = () => {
-    const rect = svgElement.getBoundingClientRect();
+  const originalViewBox = svgViewBox();
+  const viewBoxAnimation = window.MapStudioViewBoxAnimation.create(svgElement, { duration: 650 });
 
-    return { width: svgElement.clientWidth || rect.width / currentZoomScale || 1, height: svgElement.clientHeight || rect.height / currentZoomScale || 1 };
-  };
-
-  const zoomTargetFor = (regionElement) => {
+  const targetViewBoxFor = (regionElement) => {
     if (typeof regionElement.getBBox !== 'function') {
       return null;
     }
@@ -98,58 +98,43 @@ window.MapStudio.init = (mapElement) => {
       return null;
     }
 
-    const viewBox = svgViewBox();
-    const size = svgDisplaySize();
-    const mapWidth = viewport.clientWidth || size.width;
-    const mapHeight = size.height;
-    const unitX = size.width / viewBox.width;
-    const unitY = size.height / viewBox.height;
-    const regionWidth = Math.max(box.width * unitX, 1);
-    const regionHeight = Math.max(box.height * unitY, 1);
     const fitScale = Math.min(
-      (size.width * zoomSettings.viewportRatio) / regionWidth,
-      (size.height * zoomSettings.viewportRatio) / regionHeight
+      (originalViewBox.width * zoomSettings.viewportRatio) / Math.max(box.width, 1),
+      (originalViewBox.height * zoomSettings.viewportRatio) / Math.max(box.height, 1)
     );
     const scale = clamp(fitScale, zoomSettings.minScale, zoomSettings.maxScale);
-    const targetX = (box.x + box.width / 2 - viewBox.x) * unitX;
-    const targetY = (box.y + box.height / 2 - viewBox.y) * unitY;
-    const minX = Math.min(0, mapWidth - size.width * scale);
-    const minY = Math.min(0, mapHeight - size.height * scale);
-    const x = clamp(mapWidth / 2 - targetX * scale, minX, 0);
-    const y = clamp(mapHeight / 2 - targetY * scale, minY, 0);
+    const width = originalViewBox.width / scale;
+    const height = originalViewBox.height / scale;
+    const centerX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+    const maxX = originalViewBox.x + originalViewBox.width - width;
+    const maxY = originalViewBox.y + originalViewBox.height - height;
 
-    return { scale, x, y, center: { x: targetX * scale + x, y: targetY * scale + y } };
+    return {
+      x: clamp(centerX - width / 2, originalViewBox.x, maxX),
+      y: clamp(centerY - height / 2, originalViewBox.y, maxY),
+      width,
+      height,
+    };
   };
 
-  const setMapZoom = (scale, x, y) => {
-    currentZoomScale = scale;
-    mapElement.classList.toggle('is-zoomed', scale > 1);
-    resetButton.hidden = scale <= 1;
+  const resetZoom = () => {
+    viewBoxAnimation.set(originalViewBox);
+    mapElement.classList.remove('is-zoomed');
+    resetButton.hidden = true;
+  };
 
-    if (scale <= 1) {
-      mapElement.style.removeProperty('--map-studio-zoom-scale');
-      mapElement.style.removeProperty('--map-studio-zoom-x');
-      mapElement.style.removeProperty('--map-studio-zoom-y');
+  const zoomToRegion = (regionElement, onUpdate = null) => {
+    const targetViewBox = targetViewBoxFor(regionElement);
+
+    if (!targetViewBox) {
+      resetZoom();
       return;
     }
 
-    mapElement.style.setProperty('--map-studio-zoom-scale', String(scale));
-    mapElement.style.setProperty('--map-studio-zoom-x', `${x}px`);
-    mapElement.style.setProperty('--map-studio-zoom-y', `${y}px`);
-  };
-
-  const resetZoom = () => setMapZoom(1, 0, 0);
-
-  const zoomToRegion = (regionElement) => {
-    const target = zoomTargetFor(regionElement);
-
-    if (!target) {
-      resetZoom();
-      return null;
-    }
-
-    setMapZoom(target.scale, target.x, target.y);
-    return target;
+    viewBoxAnimation.set(targetViewBox, onUpdate);
+    mapElement.classList.add('is-zoomed');
+    resetButton.hidden = false;
   };
 
   const fallbackCenterFor = (regionElement) => {
@@ -232,9 +217,9 @@ window.MapStudio.init = (mapElement) => {
     }
   };
 
-  const positionBubble = (regionElement, centerOverride = null) => {
+  const positionBubble = (regionElement) => {
     const mapRect = viewport.getBoundingClientRect();
-    const center = centerOverride || centerFor(regionElement);
+    const center = centerFor(regionElement);
     const padding = 12;
     const gap = 10;
     const bubbleWidth = bubble.offsetWidth;
@@ -296,11 +281,7 @@ window.MapStudio.init = (mapElement) => {
     bubbleContent.innerHTML = content;
     bubble.classList.add('is-open');
     bubble.setAttribute('aria-hidden', 'false');
-    const zoomTarget = zoomToRegion(regionElement);
-
-    window.requestAnimationFrame(() => {
-      positionBubble(regionElement, zoomTarget ? zoomTarget.center : null);
-    });
+    zoomToRegion(regionElement, () => positionBubble(regionElement));
   };
 
   activeRegionElements.forEach((regionElement) => {
@@ -387,8 +368,7 @@ window.MapStudio.init = (mapElement) => {
 
   window.addEventListener('resize', () => {
     if (selectedRegionElement && bubble.classList.contains('is-open')) {
-      const zoomTarget = zoomToRegion(selectedRegionElement);
-      positionBubble(selectedRegionElement, zoomTarget ? zoomTarget.center : null);
+      zoomToRegion(selectedRegionElement, () => positionBubble(selectedRegionElement));
     }
   });
 

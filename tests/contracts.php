@@ -253,6 +253,9 @@ assert_contract(strpos($publishedShortcode, 'is-region-list-left') !== false, 'L
 assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-button" data-map-studio-region-key="MX-JAL"') !== false, 'Region list should include active regions.');
 assert_contract(strpos($publishedShortcode, 'Jalisco') !== false, 'Region list should render region labels.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-button" data-map-studio-region-key="MX-SON"') === false, 'Region list should not include color-only regions.');
+$publishedScripts = $GLOBALS['map_studio_contract_enqueued_scripts'] ?? [];
+assert_contract(in_array('map-studio-viewbox-animation', $publishedScripts, true), 'Published maps should enqueue the viewBox animation helper.');
+assert_contract(in_array('map-studio-frontend', $publishedScripts, true), 'Published maps should enqueue the frontend interaction script.');
 $publishedInlineCss = implode('', $GLOBALS['map_studio_contract_inline_styles']['map-studio-frontend'] ?? []);
 assert_contract(strpos($publishedInlineCss, '#aa5500') !== false, 'Published maps should include custom region color CSS.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__data"') !== false, 'Published maps should include data JSON.');
@@ -299,6 +302,7 @@ assert_contract(file_exists(dirname(__DIR__) . '/assets/maps/MX.svg'), 'Mexico S
 assert_contract(file_exists(dirname(__DIR__) . '/assets/js/admin.js'), 'Admin JS is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/css/admin.css'), 'Admin CSS is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/css/admin-dashboard.css'), 'Admin dashboard CSS is missing.');
+assert_contract(file_exists(dirname(__DIR__) . '/assets/js/viewbox-animation.js'), 'ViewBox animation JS is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/js/frontend.js'), 'Frontend JS is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/css/frontend.css'), 'Frontend CSS is missing.');
 
@@ -321,16 +325,28 @@ assert_contract(strpos($mapSettingsFields, 'map_studio_region_list_position') !=
 $frontendJs = file_get_contents(dirname(__DIR__) . '/assets/js/frontend.js');
 assert_contract(is_string($frontendJs), 'Frontend JS should be readable.');
 assert_contract(strpos($frontendJs, 'window.MapStudio') !== false, 'Frontend JS namespace should be renamed.');
+assert_contract(strpos($frontendJs, 'MapStudioViewBoxAnimation') !== false, 'Frontend JS should use the animated viewBox helper.');
 assert_contract(strpos($frontendJs, 'resetMap') !== false, 'Frontend JS should expose map reset behavior.');
 assert_contract(strpos($frontendJs, 'zoomToRegion') !== false, 'Frontend JS should zoom toward selected regions.');
+assert_contract(strpos($frontendJs, 'originalViewBox') !== false, 'Frontend JS should preserve the original SVG viewBox.');
+assert_contract(strpos($frontendJs, '.set(targetViewBox') !== false, 'Frontend JS should animate to the target SVG viewBox.');
+assert_contract(strpos($frontendJs, '--map-studio-zoom-scale') === false, 'Frontend JS should not use CSS scale variables for map zoom.');
 assert_contract(strpos($frontendJs, 'getPointAtLength') !== false, 'Bubble anchor should use path geometry sampling.');
 assert_contract(strpos($frontendJs, 'map-studio__region-list-button') !== false, 'Frontend JS should bind region list buttons.');
+
+$viewBoxAnimationJs = file_get_contents(dirname(__DIR__) . '/assets/js/viewbox-animation.js');
+assert_contract(is_string($viewBoxAnimationJs), 'ViewBox animation JS should be readable.');
+assert_contract(strpos($viewBoxAnimationJs, 'window.MapStudioViewBoxAnimation') !== false, 'ViewBox animation helper should expose a global namespace.');
+assert_contract(strpos($viewBoxAnimationJs, 'requestAnimationFrame') !== false, 'ViewBox animation helper should animate with requestAnimationFrame.');
+assert_contract(strpos($viewBoxAnimationJs, 'cancelAnimationFrame') !== false, 'ViewBox animation helper should cancel interrupted animations.');
+assert_contract(strpos($viewBoxAnimationJs, 'prefers-reduced-motion: reduce') !== false, 'ViewBox animation helper should respect reduced-motion preferences.');
 
 $frontendCss = file_get_contents(dirname(__DIR__) . '/assets/css/frontend.css');
 assert_contract(is_string($frontendCss), 'Frontend CSS should be readable.');
 assert_contract(strpos($frontendCss, '.map-studio__region:focus') !== false, 'Frontend CSS should control SVG region focus outlines.');
 assert_contract(strpos($frontendCss, '.map-studio__reset') !== false, 'Frontend CSS should style the icon-only zoom reset control.');
-assert_contract(strpos($frontendCss, '--map-studio-zoom-transition: 650ms') !== false, 'Frontend CSS should use the slower zoom transition.');
+assert_contract(strpos($frontendCss, 'transform: translate(var(--map-studio-zoom-x)') === false, 'Frontend CSS should not scale the SVG with transforms.');
+assert_contract(strpos($frontendCss, 'will-change: transform') === false, 'Frontend CSS should not force the SVG into a transform raster layer.');
 assert_contract(strpos($frontendCss, '.map-studio__region-list') !== false, 'Frontend CSS should style the public region list.');
 assert_contract(strpos($frontendCss, 'is-region-list-left') !== false, 'Frontend CSS should support left-positioned region lists.');
 
