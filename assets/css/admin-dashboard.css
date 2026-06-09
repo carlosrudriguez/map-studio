@@ -1,0 +1,69 @@
+/**
+ * Organizes the Map Studio editor into clear dashboard sections.
+ * It depends on admin.css for shared Map Studio admin spacing and color tokens.
+ */
+
+.map-studio-admin__section {
+  display: grid;
+  gap: var(--map-studio-admin-space-md);
+  padding: var(--map-studio-admin-space-lg);
+  border: 1px solid var(--map-studio-admin-border);
+  border-radius: var(--map-studio-admin-radius-sm);
+  background: var(--map-studio-admin-surface);
+}
+
+.map-studio-admin__section-header {
+  display: grid;
+  gap: var(--map-studio-admin-space-xs);
+  padding-bottom: var(--map-studio-admin-space-md);
+  border-bottom: 1px solid var(--map-studio-admin-border);
+}
+
+.map-studio-admin__section-title {
+  margin: 0;
+  color: var(--map-studio-admin-text);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.map-studio-admin__section-description {
+  max-width: 720px;
+  margin: 0;
+  color: var(--map-studio-admin-muted);
+}
+
+.map-studio-admin__section-body {
+  display: grid;
+  gap: var(--map-studio-admin-space-md);
+}
+
+.map-studio-admin__setup-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(280px, 1fr);
+  gap: var(--map-studio-admin-space-lg);
+  align-items: start;
+}
+
+.map-studio-admin__appearance-grid {
+  display: grid;
+  gap: var(--map-studio-admin-space-md);
+}
+
+.map-studio-admin__section.is-content .map-studio-admin__section-body {
+  gap: var(--map-studio-admin-space-lg);
+}
+
+.map-studio-admin__section.is-appearance .map-studio-admin__region-color,
+.map-studio-admin__section.is-appearance .map-studio-admin__colors {
+  background: var(--map-studio-admin-surface-alt);
+}
+
+@media (max-width: 782px) {
+  .map-studio-admin__section {
+    padding: var(--map-studio-admin-space-md);
+  }
+
+  .map-studio-admin__setup-grid {
+    grid-template-columns: 1fr;
+  }
+}

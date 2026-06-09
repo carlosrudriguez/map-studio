@@ -65,23 +65,33 @@ final class MapMetaBox {
         echo '<textarea class="map-studio-admin__region-json" name="map_studio_regions_json" hidden>' . \esc_textarea($regionsJson) . '</textarea>';
         echo '<textarea class="map-studio-admin__region-colors-json" name="map_studio_region_colors_json" hidden>' . \esc_textarea($regionColorsJson) . '</textarea>';
         echo '<script type="application/json" class="map-studio-admin__maps-data">' . $this->mapsJson($maps) . '</script>';
+
+        MapDashboardSection::open('setup', __('Map Setup', 'map-studio'), __('Choose the base map and public region list behavior.', 'map-studio'));
+        echo '<div class="map-studio-admin__setup-grid">';
         $this->renderMapSelector($maps, $mapDefinition);
         MapSettingsFields::renderRegionListToggle((bool) $payload['regionListEnabled'], $payload['regionListPosition']);
+        echo '</div>';
+        MapDashboardSection::close();
+
+        MapDashboardSection::open('content', __('Region Content', 'map-studio'), __('Edit the regions that can be clicked on the public map.', 'map-studio'));
         echo '<p class="map-studio-admin__summary" data-map-studio-summary>' . \esc_html($this->summaryText(count($regions), count($regionColors), count($shapes), $mapDefinition !== null)) . '</p>';
         echo '<div class="map-studio-admin__layout">';
         echo '<div class="map-studio-admin__regions" role="list">';
         $this->renderRegionButtons($shapes, $regions, $regionColors, $selectedRegionKey);
         echo '</div>';
         echo '<div class="map-studio-admin__editor">';
-        if (function_exists('current_user_can') && \current_user_can('manage_options')) {
-            $this->renderRegionColorControl($selectedRegionKey, $regionColors, $defaultRegionColor);
-        }
         $this->renderEditor($initialEditorContent);
         echo '</div>';
         echo '</div>';
+        MapDashboardSection::close();
 
         if (function_exists('current_user_can') && \current_user_can('manage_options')) {
+            MapDashboardSection::open('appearance', __('Appearance', 'map-studio'), __('Control colors for selected regions and the public map display.', 'map-studio'));
+            echo '<div class="map-studio-admin__appearance-grid">';
+            $this->renderRegionColorControl($selectedRegionKey, $regionColors, $defaultRegionColor);
             $this->renderColorControls($payload['colors']);
+            echo '</div>';
+            MapDashboardSection::close();
         }
 
         echo '</div>';
@@ -161,6 +171,13 @@ final class MapMetaBox {
             'map-studio-admin',
             MAP_STUDIO_URL . 'assets/css/admin.css',
             [],
+            MAP_STUDIO_VERSION
+        );
+
+        \wp_enqueue_style(
+            'map-studio-admin-dashboard',
+            MAP_STUDIO_URL . 'assets/css/admin-dashboard.css',
+            ['map-studio-admin'],
             MAP_STUDIO_VERSION
         );
 

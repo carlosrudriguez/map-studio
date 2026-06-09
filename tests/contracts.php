@@ -14,7 +14,9 @@ $map_studio_files = [
     'includes/Admin/Menu.php',
     'includes/Admin/MapPostType.php',
     'includes/Admin/MapListTable.php',
+    'includes/Admin/MapDashboardSection.php',
     'includes/Admin/MapSettingsFields.php',
+    'includes/Admin/MapMetaBox.php',
     'includes/Frontend/Shortcode.php',
 ];
 
@@ -108,6 +110,15 @@ function esc_html__(string $text, string $domain = 'default'): string {
 
 function __(string $text, string $domain = 'default'): string {
     return $text;
+}
+
+function wp_nonce_field(string $action, string $name): void {
+    echo '<input type="hidden" name="' . esc_attr($name) . '" value="contract-nonce">';
+}
+
+function wp_editor(string $content, string $editor_id, array $settings = []): void {
+    $textareaName = isset($settings['textarea_name']) && is_string($settings['textarea_name']) ? $settings['textarea_name'] : $editor_id;
+    echo '<textarea id="' . esc_attr($editor_id) . '" name="' . esc_attr($textareaName) . '">' . esc_textarea($content) . '</textarea>';
 }
 
 function add_menu_page(
@@ -256,6 +267,19 @@ $publishedWithoutList = (new \MapStudio\Frontend\Shortcode())->render(['id' => 1
 assert_contract(strpos($publishedWithoutList, 'class="map-studio__region-list"') === false, 'Disabled region list setting should not render a public region list.');
 unset($GLOBALS['map_studio_contract_post_meta'], $GLOBALS['map_studio_contract_posts']);
 
+$GLOBALS['map_studio_contract_current_user_can']['manage_options'] = true;
+$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco visible content.</p>"},"regionColors":{"MX-JAL":"#123456"},"colors":{"inactive":"#d1d5db"},"regionListEnabled":true,"regionListPosition":"right"}';
+ob_start();
+(new \MapStudio\Admin\MapMetaBox())->render((object) ['ID' => 20]);
+$adminMarkup = ob_get_clean();
+assert_contract(is_string($adminMarkup), 'Admin map editor should render markup.');
+assert_contract(strpos($adminMarkup, 'map-studio-admin__section is-setup') !== false, 'Admin editor should render a Map Setup section.');
+assert_contract(strpos($adminMarkup, 'map-studio-admin__section is-content') !== false, 'Admin editor should render a Region Content section.');
+assert_contract(strpos($adminMarkup, 'map-studio-admin__section is-appearance') !== false, 'Admin editor should render an Appearance section.');
+assert_contract(strpos($adminMarkup, 'map-studio-admin__section-title') !== false, 'Admin editor sections should render titled headers.');
+assert_contract(strpos($adminMarkup, 'map-studio-admin__appearance-grid') !== false, 'Appearance controls should render in a dedicated layout.');
+unset($GLOBALS['map_studio_contract_current_user_can'], $GLOBALS['map_studio_contract_post_meta']);
+
 $GLOBALS['menu'] = [
     ['', '', \MapStudio\Admin\Menu::SLUG],
 ];
@@ -274,6 +298,7 @@ assert_contract(file_exists(dirname(__DIR__) . '/includes/Plugin.php'), 'Plugin 
 assert_contract(file_exists(dirname(__DIR__) . '/assets/maps/MX.svg'), 'Mexico SVG is missing from maps directory.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/js/admin.js'), 'Admin JS is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/css/admin.css'), 'Admin CSS is missing.');
+assert_contract(file_exists(dirname(__DIR__) . '/assets/css/admin-dashboard.css'), 'Admin dashboard CSS is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/js/frontend.js'), 'Frontend JS is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/css/frontend.css'), 'Frontend CSS is missing.');
 
@@ -281,6 +306,12 @@ $adminJs = file_get_contents(dirname(__DIR__) . '/assets/js/admin.js');
 assert_contract(is_string($adminJs), 'Admin JS should be readable.');
 assert_contract(strpos($adminJs, 'map-studio-admin__region-colors-json') !== false, 'Admin JS should synchronize region color JSON.');
 assert_contract(strpos($adminJs, 'map_studio_region_color') !== false, 'Admin JS should manage the selected region color picker.');
+
+$adminDashboardCss = file_get_contents(dirname(__DIR__) . '/assets/css/admin-dashboard.css');
+assert_contract(is_string($adminDashboardCss), 'Admin dashboard CSS should be readable.');
+assert_contract(strpos($adminDashboardCss, '.map-studio-admin__section') !== false, 'Admin dashboard CSS should style dashboard sections.');
+assert_contract(strpos($adminDashboardCss, '.map-studio-admin__setup-grid') !== false, 'Admin dashboard CSS should style the map setup section.');
+assert_contract(strpos($adminDashboardCss, '.map-studio-admin__appearance-grid') !== false, 'Admin dashboard CSS should style the appearance section.');
 
 $mapSettingsFields = file_get_contents(dirname(__DIR__) . '/includes/Admin/MapSettingsFields.php');
 assert_contract(is_string($mapSettingsFields), 'Map settings fields should be readable.');
