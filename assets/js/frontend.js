@@ -226,6 +226,7 @@ window.MapStudio.init = (mapElement) => {
     const bubbleHeight = bubble.offsetHeight;
     const maxLeft = mapRect.width - bubbleWidth - padding;
     const maxTop = mapRect.height - bubbleHeight - padding;
+    const pointerPadding = 18;
     let left = center.x - bubbleWidth / 2;
     let top = center.y - bubbleHeight - gap;
 
@@ -236,8 +237,14 @@ window.MapStudio.init = (mapElement) => {
     left = clamp(left, padding, maxLeft);
     top = clamp(top, padding, maxTop);
 
+    const pointerX = clamp(center.x - left, pointerPadding, bubbleWidth - pointerPadding);
+    const bubbleIsBelowRegion = center.y < top + bubbleHeight / 2;
+
+    bubble.classList.toggle('is-above-region', !bubbleIsBelowRegion);
+    bubble.classList.toggle('is-below-region', bubbleIsBelowRegion);
     bubble.style.setProperty('--map-studio-bubble-x', `${left}px`);
     bubble.style.setProperty('--map-studio-bubble-y', `${top}px`);
+    bubble.style.setProperty('--map-studio-bubble-pointer-x', `${pointerX}px`);
   };
 
   const setSelectedListButton = (regionKey) => {

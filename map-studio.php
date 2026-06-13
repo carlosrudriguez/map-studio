@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Plugin Name: Map Studio
  * Description: Builds configurable interactive SVG maps through a shortcode.
- * Version: 0.1.0
+ * Version: 1.0.0
  * Author: Carlos Rodríguez
  * Author URI: https://carlosrodriguez.mx/
  * License: GPL-3.0-or-later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('MAP_STUDIO_VERSION', '0.1.0');
+define('MAP_STUDIO_VERSION', '1.0.0');
 define('MAP_STUDIO_FILE', __FILE__);
 define('MAP_STUDIO_PATH', plugin_dir_path(__FILE__));
 define('MAP_STUDIO_URL', plugin_dir_url(__FILE__));

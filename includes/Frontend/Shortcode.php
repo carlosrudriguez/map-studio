@@ -88,6 +88,7 @@ final class Shortcode {
         $markup .= '</svg>';
         $markup .= '</button>';
         $markup .= '<div class="map-studio__bubble" role="dialog" aria-hidden="true">';
+        $markup .= '<span class="map-studio__bubble-pointer" aria-hidden="true"></span>';
         $markup .= '<button type="button" class="map-studio__close" aria-label="' . \esc_attr__('Close map information', 'map-studio') . '">&times;</button>';
         $markup .= '<div class="map-studio__bubble-content" tabindex="-1"></div>';
         $markup .= '</div>';
@@ -95,7 +96,7 @@ final class Shortcode {
         $markup .= '</div>';
 
         if ($hasRegionList) {
-            $markup .= $this->renderRegionList($mapDefinition, $activeRegions);
+            $markup .= $this->renderRegionList($mapDefinition, $activeRegions, $payload['regionListPosition']);
         }
 
         $markup .= '</div>';
@@ -107,9 +108,10 @@ final class Shortcode {
     /**
      * @param array<string, string> $activeRegions
      */
-    private function renderRegionList(MapDefinition $mapDefinition, array $activeRegions): string {
+    private function renderRegionList(MapDefinition $mapDefinition, array $activeRegions, string $position): string {
         $activeRegionKeys = array_fill_keys(array_keys($activeRegions), true);
-        $markup = '<aside class="map-studio__region-list" aria-label="' . \esc_attr__('Map regions', 'map-studio') . '">';
+        $position = $position === 'left' ? 'left' : 'right';
+        $markup = '<aside class="map-studio__region-list is-position-' . \esc_attr($position) . '" aria-label="' . \esc_attr__('Map regions', 'map-studio') . '">';
         $markup .= '<div class="map-studio__region-list-items" role="list">';
 
         foreach ($mapDefinition->shapes() as $shape) {
@@ -119,9 +121,11 @@ final class Shortcode {
                 continue;
             }
 
+            $markup .= '<div class="map-studio__region-list-item" role="listitem">';
             $markup .= '<button type="button" class="map-studio__region-list-button" data-map-studio-region-key="' . \esc_attr($regionKey) . '" aria-pressed="false">';
-            $markup .= \esc_html($shape['label']);
+            $markup .= '<span class="map-studio__region-list-label">' . \esc_html($shape['label']) . '</span>';
             $markup .= '</button>';
+            $markup .= '</div>';
         }
 
         $markup .= '</div>';

@@ -29,7 +29,7 @@ foreach ($map_studio_files as $map_studio_file) {
 }
 
 if (!defined('MAP_STUDIO_VERSION')) {
-    define('MAP_STUDIO_VERSION', '0.1.0');
+    define('MAP_STUDIO_VERSION', '1.0.0');
 }
 
 if (!defined('MAP_STUDIO_PATH')) {
@@ -248,9 +248,12 @@ assert_contract(strpos($publishedShortcode, 'data-map-studio-region-key="MX-SON"
 assert_contract(strpos($publishedShortcode, 'class="map-studio__reset"') !== false, 'Published maps should render an icon-only zoom reset control.');
 assert_contract(strpos($publishedShortcode, 'Reset map zoom') !== false, 'Zoom reset control should have an accessible label.');
 assert_contract(strpos($publishedShortcode, 'M7 4H4v3') !== false, 'Zoom reset control should use the fit-to-map corner icon.');
-assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list"') !== false, 'Enabled maps should render a public region list.');
+assert_contract(strpos($publishedShortcode, 'class="map-studio__bubble-pointer" aria-hidden="true"') !== false, 'Published maps should render a targetable bubble pointer.');
+assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list is-position-left"') !== false, 'Enabled maps should render a public region list with a position class.');
 assert_contract(strpos($publishedShortcode, 'is-region-list-left') !== false, 'Left-positioned region list should add a frontend layout class.');
+assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-item" role="listitem"') !== false, 'Region list entries should have a targetable item class.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-button" data-map-studio-region-key="MX-JAL"') !== false, 'Region list should include active regions.');
+assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-label">Jalisco</span>') !== false, 'Region list labels should have a targetable label class.');
 assert_contract(strpos($publishedShortcode, 'Jalisco') !== false, 'Region list should render region labels.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-button" data-map-studio-region-key="MX-SON"') === false, 'Region list should not include color-only regions.');
 $publishedScripts = $GLOBALS['map_studio_contract_enqueued_scripts'] ?? [];
@@ -332,6 +335,9 @@ assert_contract(strpos($frontendJs, 'originalViewBox') !== false, 'Frontend JS s
 assert_contract(strpos($frontendJs, '.set(targetViewBox') !== false, 'Frontend JS should animate to the target SVG viewBox.');
 assert_contract(strpos($frontendJs, '--map-studio-zoom-scale') === false, 'Frontend JS should not use CSS scale variables for map zoom.');
 assert_contract(strpos($frontendJs, 'getPointAtLength') !== false, 'Bubble anchor should use path geometry sampling.');
+assert_contract(strpos($frontendJs, '--map-studio-bubble-pointer-x') !== false, 'Frontend JS should position the bubble pointer toward the selected region.');
+assert_contract(strpos($frontendJs, 'is-above-region') !== false, 'Frontend JS should mark bubbles positioned above their selected region.');
+assert_contract(strpos($frontendJs, 'is-below-region') !== false, 'Frontend JS should mark bubbles positioned below their selected region.');
 assert_contract(strpos($frontendJs, 'map-studio__region-list-button') !== false, 'Frontend JS should bind region list buttons.');
 
 $viewBoxAnimationJs = file_get_contents(dirname(__DIR__) . '/assets/js/viewbox-animation.js');
@@ -347,7 +353,15 @@ assert_contract(strpos($frontendCss, '.map-studio__region:focus') !== false, 'Fr
 assert_contract(strpos($frontendCss, '.map-studio__reset') !== false, 'Frontend CSS should style the icon-only zoom reset control.');
 assert_contract(strpos($frontendCss, 'transform: translate(var(--map-studio-zoom-x)') === false, 'Frontend CSS should not scale the SVG with transforms.');
 assert_contract(strpos($frontendCss, 'will-change: transform') === false, 'Frontend CSS should not force the SVG into a transform raster layer.');
+assert_contract(strpos($frontendCss, '.map-studio__bubble-pointer') !== false, 'Frontend CSS should style the bubble pointer.');
+assert_contract(strpos($frontendCss, '.map-studio__bubble.is-above-region .map-studio__bubble-pointer') !== false, 'Frontend CSS should place the pointer under bubbles that sit above regions.');
+assert_contract(strpos($frontendCss, '.map-studio__bubble.is-below-region .map-studio__bubble-pointer') !== false, 'Frontend CSS should place the pointer above bubbles that sit below regions.');
+assert_contract(strpos($frontendCss, '.map-studio__bubble-pointer::before') !== false, 'Frontend CSS should draw the bubble pointer border as a triangle.');
+assert_contract(strpos($frontendCss, '.map-studio__bubble-pointer::after') !== false, 'Frontend CSS should draw the bubble pointer fill as a triangle.');
+assert_contract(strpos($frontendCss, 'rotate(45deg)') === false, 'Frontend CSS should not use a rotated square for the bubble pointer.');
 assert_contract(strpos($frontendCss, '.map-studio__region-list') !== false, 'Frontend CSS should style the public region list.');
+assert_contract(strpos($frontendCss, '.map-studio__region-list-item') !== false, 'Frontend CSS should expose a public region list item hook.');
+assert_contract(strpos($frontendCss, '.map-studio__region-list-label') !== false, 'Frontend CSS should expose a public region list label hook.');
 assert_contract(strpos($frontendCss, 'is-region-list-left') !== false, 'Frontend CSS should support left-positioned region lists.');
 
 echo 'All contract checks passed.' . PHP_EOL;
