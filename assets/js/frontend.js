@@ -15,6 +15,8 @@ window.MapStudio.init = (mapElement) => {
   const bubbleContent = mapElement.querySelector('.map-studio__bubble-content');
   const closeButton = mapElement.querySelector('.map-studio__close');
   const resetButton = mapElement.querySelector('.map-studio__reset');
+  const legendToggle = mapElement.querySelector('.map-studio__legend-toggle');
+  const legendContent = mapElement.querySelector('.map-studio__legend-content');
   const regionListToggle = mapElement.querySelector('.map-studio__region-list-toggle');
   const regionList = mapElement.querySelector('.map-studio__region-list');
   const svgElement = mapElement.querySelector('.map-studio__svg');
@@ -54,6 +56,7 @@ window.MapStudio.init = (mapElement) => {
     const activeControlHasFocus = activeElement && typeof activeElement.blur === 'function' && (
       closeButton.contains(activeElement) ||
       resetButton.contains(activeElement) ||
+      (legendToggle && legendToggle.contains(activeElement)) ||
       (regionListToggle && regionListToggle.contains(activeElement)) ||
       regionListButtons.some((button) => button.contains(activeElement))
     );
@@ -280,7 +283,7 @@ window.MapStudio.init = (mapElement) => {
     }
 
     setSelectedListButton('');
-    bubble.classList.remove('is-open');
+    bubble.classList.remove('is-open', 'is-legend', 'is-above-region', 'is-below-region');
     bubble.setAttribute('aria-hidden', 'true');
     bubbleContent.innerHTML = '';
     resetZoom();
@@ -303,9 +306,30 @@ window.MapStudio.init = (mapElement) => {
     selectedRegionElement.classList.add('is-selected');
     setSelectedListButton(regionKeyFor(regionElement));
     bubbleContent.innerHTML = content;
+    bubble.classList.remove('is-legend');
     bubble.classList.add('is-open');
     bubble.setAttribute('aria-hidden', 'false');
     zoomToRegion(regionElement, () => positionBubble(regionElement));
+  };
+
+  const openLegend = () => {
+    const content = legendContent ? legendContent.innerHTML.trim() : '';
+
+    if (!content) {
+      return;
+    }
+
+    if (selectedRegionElement) {
+      selectedRegionElement.classList.remove('is-selected');
+      selectedRegionElement = null;
+    }
+
+    setSelectedListButton('');
+    resetZoom();
+    bubbleContent.innerHTML = content;
+    bubble.classList.remove('is-above-region', 'is-below-region');
+    bubble.classList.add('is-open', 'is-legend');
+    bubble.setAttribute('aria-hidden', 'false');
   };
 
   activeRegionElements.forEach((regionElement) => {
@@ -343,6 +367,13 @@ window.MapStudio.init = (mapElement) => {
     regionListToggle.addEventListener('click', (event) => {
       event.stopPropagation();
       setRegionListCollapsed(!mapElement.classList.contains('is-region-list-collapsed'));
+    });
+  }
+
+  if (legendToggle && legendContent) {
+    legendToggle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openLegend();
     });
   }
 

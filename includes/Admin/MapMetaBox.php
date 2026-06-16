@@ -71,6 +71,7 @@ final class MapMetaBox {
         $this->renderMapSelector($maps, $mapDefinition);
         MapSettingsFields::renderRegionListToggle((bool) $payload['regionListEnabled'], $payload['regionListPosition'], (bool) $payload['regionListHiddenByDefault']);
         echo '</div>';
+        MapSettingsFields::renderLegendEditor($payload['legend']);
         MapDashboardSection::close();
 
         MapDashboardSection::open('content', __('Region Content', 'map-studio'), __('Edit the regions that can be clicked on the public map.', 'map-studio'));
@@ -151,6 +152,7 @@ final class MapMetaBox {
                 'regionListEnabled' => isset($_POST['map_studio_region_list_enabled']) ? '1' : '0',
                 'regionListPosition' => $this->postedString('map_studio_region_list_position'),
                 'regionListHiddenByDefault' => isset($_POST['map_studio_region_list_hidden_by_default']) ? '1' : '0',
+                'legend' => $this->postedString('map_studio_legend'),
             ],
             $lockedMapId,
             $mapDefinition

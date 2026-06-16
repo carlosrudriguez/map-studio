@@ -222,6 +222,25 @@
   outline-offset: -2px;
 }
 
+.map-studio-admin__legend {
+  display: grid;
+  gap: var(--map-studio-admin-space-sm);
+  margin: 0;
+  padding: var(--map-studio-admin-space-md);
+  border: 1px solid var(--map-studio-admin-border);
+  border-radius: var(--map-studio-admin-radius-sm);
+  background: var(--map-studio-admin-surface-alt);
+}
+
+.map-studio-admin__legend legend {
+  padding: 0 var(--map-studio-admin-space-xs);
+  font-weight: 600;
+}
+
+.map-studio-admin__legend textarea {
+  width: 100%;
+}
+
 .map-studio-admin__layout {
   display: grid;
   grid-template-columns: minmax(220px, 30%) minmax(0, 1fr);

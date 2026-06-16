@@ -43,6 +43,27 @@ final class MapSettingsFields {
         echo '</fieldset>';
     }
 
+    public static function renderLegendEditor(string $legend): void {
+        echo '<fieldset class="map-studio-admin__legend">';
+        echo '<legend>' . \esc_html__('Map Legend', 'map-studio') . '</legend>';
+
+        if (function_exists('wp_editor')) {
+            \wp_editor(
+                $legend,
+                'map_studio_legend',
+                [
+                    'media_buttons' => true,
+                    'textarea_name' => 'map_studio_legend',
+                    'textarea_rows' => 8,
+                ]
+            );
+        } else {
+            echo '<textarea id="map_studio_legend" name="map_studio_legend" rows="8">' . \esc_textarea($legend) . '</textarea>';
+        }
+
+        echo '</fieldset>';
+    }
+
     private static function renderPositionOption(string $value, string $label, string $selectedPosition): void {
         $checked = $selectedPosition === $value ? ' checked' : '';
 

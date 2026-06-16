@@ -23,7 +23,7 @@ final class MapMeta {
     ];
 
     /**
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool, legend: string}
      */
     public static function defaultPayload(): array {
         return [
@@ -34,12 +34,13 @@ final class MapMeta {
             'regionListEnabled' => false,
             'regionListPosition' => 'right',
             'regionListHiddenByDefault' => false,
+            'legend' => '',
         ];
     }
 
     /**
      * @param array<string, mixed> $payload
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool, legend: string}
      */
     public static function sanitizePayload(array $payload, string $lockedMapId = '', ?MapDefinition $mapDefinition = null): array {
         $sanitized = self::defaultPayload();
@@ -104,6 +105,13 @@ final class MapMeta {
         $sanitized['regionListPosition'] = self::sanitizeRegionListPosition($payload['regionListPosition'] ?? 'right');
         $sanitized['regionListHiddenByDefault'] = $sanitized['regionListEnabled'] && self::sanitizeBoolean($payload['regionListHiddenByDefault'] ?? false);
 
+        $legend = isset($payload['legend']) && is_scalar($payload['legend']) ? trim((string) $payload['legend']) : '';
+
+        if ($legend !== '') {
+            $cleanLegend = trim(self::sanitizeEditorHtml($legend));
+            $sanitized['legend'] = $cleanLegend;
+        }
+
         return $sanitized;
     }
 
@@ -140,7 +148,7 @@ final class MapMeta {
     }
 
     /**
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool, legend: string}
      */
     public static function get(int $postId, ?MapDefinition $mapDefinition = null): array {
         if (!function_exists('get_post_meta')) {

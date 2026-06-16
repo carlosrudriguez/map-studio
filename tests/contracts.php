@@ -168,6 +168,7 @@ $payload = \MapStudio\MapMeta::sanitizePayload(
         'regionListEnabled' => '1',
         'regionListPosition' => 'left',
         'regionListHiddenByDefault' => '1',
+        'legend' => '<p>Legend <strong>content</strong></p><script>alert(1)</script>',
     ],
     '',
     $maps['MX']
@@ -185,17 +186,23 @@ assert_contract(!isset($payload['regionColors']['MX-BCN']), 'Invalid region colo
 assert_contract($payload['regionListEnabled'] === true, 'Region list setting should be saved when enabled.');
 assert_contract($payload['regionListPosition'] === 'left', 'Region list position should be saved when valid.');
 assert_contract($payload['regionListHiddenByDefault'] === true, 'Region list hidden-by-default setting should be saved when enabled.');
+assert_contract(isset($payload['legend']) && strpos($payload['legend'], '<strong>content</strong>') !== false, 'Map legend content should be saved.');
+assert_contract(isset($payload['legend']) && strpos($payload['legend'], '<script>') === false, 'Map legend content should be sanitized.');
 
 $defaultSettingsPayload = \MapStudio\MapMeta::sanitizePayload([], '', $maps['MX']);
 assert_contract($defaultSettingsPayload['regionListEnabled'] === false, 'Region list setting should default to disabled.');
 assert_contract($defaultSettingsPayload['regionListPosition'] === 'right', 'Region list position should default to right.');
 assert_contract($defaultSettingsPayload['regionListHiddenByDefault'] === false, 'Region list hidden-by-default setting should default to disabled.');
+assert_contract(($defaultSettingsPayload['legend'] ?? null) === '', 'Map legend should default to empty.');
 
 $invalidSettingsPayload = \MapStudio\MapMeta::sanitizePayload(['regionListPosition' => 'top'], '', $maps['MX']);
 assert_contract($invalidSettingsPayload['regionListPosition'] === 'right', 'Invalid region list position should fall back to right.');
 
 $disabledHiddenSettingsPayload = \MapStudio\MapMeta::sanitizePayload(['regionListEnabled' => '0', 'regionListHiddenByDefault' => '1'], '', $maps['MX']);
 assert_contract($disabledHiddenSettingsPayload['regionListHiddenByDefault'] === false, 'Hidden-by-default should not be enabled when the region list is disabled.');
+
+$emptyLegendPayload = \MapStudio\MapMeta::sanitizePayload(['legend' => '   '], '', $maps['MX']);
+assert_contract(($emptyLegendPayload['legend'] ?? null) === '', 'Empty map legend content should not be saved.');
 
 $lockedPayload = \MapStudio\MapMeta::sanitizePayload(
     [
@@ -225,7 +232,7 @@ $duplicateSvg = new \MapStudio\SvgMap($maps['ASIA']);
 $renderedDuplicateSvg = $duplicateSvg->renderForInstance('contract-asia', ['99--northern-cyprus']);
 assert_contract(strpos($renderedDuplicateSvg, 'data-map-studio-region-key="99--northern-cyprus"') !== false, 'Duplicate SVG IDs should render with stable region keys.');
 
-$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco from JSON meta</p>"},"regionColors":{"MX-SON":"#123456"},"colors":{"inactive":"#222222"},"regionListEnabled":true,"regionListPosition":"left","regionListHiddenByDefault":true}';
+$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco from JSON meta</p>"},"regionColors":{"MX-SON":"#123456"},"colors":{"inactive":"#222222"},"regionListEnabled":true,"regionListPosition":"left","regionListHiddenByDefault":true,"legend":"<p>JSON legend</p>"}';
 $jsonMetaPayload = \MapStudio\MapMeta::get(123, $maps['MX']);
 assert_contract(isset($jsonMetaPayload['regions']['MX-JAL']), 'JSON string meta payload should be decoded.');
 assert_contract($jsonMetaPayload['regionColors']['MX-SON'] === '#123456', 'JSON string meta region colors should be decoded.');
@@ -233,9 +240,10 @@ assert_contract($jsonMetaPayload['colors']['inactive'] === '#222222', 'JSON stri
 assert_contract($jsonMetaPayload['regionListEnabled'] === true, 'JSON string meta region list setting should be decoded.');
 assert_contract($jsonMetaPayload['regionListPosition'] === 'left', 'JSON string meta region list position should be decoded.');
 assert_contract($jsonMetaPayload['regionListHiddenByDefault'] === true, 'JSON string meta region list hidden setting should be decoded.');
+assert_contract(($jsonMetaPayload['legend'] ?? null) === '<p>JSON legend</p>', 'JSON string meta legend should be decoded.');
 unset($GLOBALS['map_studio_contract_post_meta']);
 
-$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco visible content.</p>"},"regionColors":{"MX-SON":"#aa5500"},"colors":{"inactive":"#d1d5db"},"regionListEnabled":true,"regionListPosition":"left"}';
+$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco visible content.</p>"},"regionColors":{"MX-SON":"#aa5500"},"colors":{"inactive":"#d1d5db"},"regionListEnabled":true,"regionListPosition":"left","legend":"<p>Map legend content.</p>"}';
 $GLOBALS['map_studio_contract_posts'][10] = (object) [
     'ID' => 10,
     'post_type' => \MapStudio\Admin\MapPostType::POST_TYPE,
@@ -264,6 +272,10 @@ assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-labe
 assert_contract(strpos($publishedShortcode, 'Jalisco') !== false, 'Region list should render region labels.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-button" data-map-studio-region-key="MX-SON"') === false, 'Region list should not include color-only regions.');
 assert_contract(strpos($publishedShortcode, 'map-studio__region-list-toggle') === false, 'Visible region lists should not render a sidebar toggle button.');
+assert_contract(strpos($publishedShortcode, 'class="map-studio__legend-toggle"') !== false, 'Maps with legend content should render a legend action button.');
+assert_contract(strpos($publishedShortcode, 'aria-controls="map-studio-legend-map-11-') !== false, 'Legend action button should target a unique legend content container.');
+assert_contract(strpos($publishedShortcode, 'class="map-studio__legend-content" id="map-studio-legend-map-11-') !== false, 'Maps with legend content should render a hidden legend content container.');
+assert_contract(strpos($publishedShortcode, '<p>Map legend content.</p>') !== false, 'Maps with legend content should render sanitized legend content.');
 $publishedScripts = $GLOBALS['map_studio_contract_enqueued_scripts'] ?? [];
 assert_contract(in_array('map-studio-viewbox-animation', $publishedScripts, true), 'Published maps should enqueue the viewBox animation helper.');
 assert_contract(in_array('map-studio-frontend', $publishedScripts, true), 'Published maps should enqueue the frontend interaction script.');
@@ -280,6 +292,7 @@ $GLOBALS['map_studio_contract_posts'][12] = (object) [
 $publishedWithoutList = (new \MapStudio\Frontend\Shortcode())->render(['id' => 12]);
 assert_contract(strpos($publishedWithoutList, 'class="map-studio__region-list"') === false, 'Disabled region list setting should not render a public region list.');
 assert_contract(strpos($publishedWithoutList, 'map-studio__region-list-toggle') === false, 'Disabled region list setting should not render a sidebar toggle button.');
+assert_contract(strpos($publishedWithoutList, 'map-studio__legend-toggle') === false, 'Maps without legend content should not render a legend action button.');
 
 $GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco visible content.</p>"},"regionListEnabled":true,"regionListPosition":"right","regionListHiddenByDefault":true}';
 $GLOBALS['map_studio_contract_posts'][13] = (object) [
@@ -310,6 +323,8 @@ assert_contract(strpos($adminMarkup, 'map-studio-admin__section is-appearance') 
 assert_contract(strpos($adminMarkup, 'map-studio-admin__section-title') !== false, 'Admin editor sections should render titled headers.');
 assert_contract(strpos($adminMarkup, 'map-studio-admin__appearance-grid') !== false, 'Appearance controls should render in a dedicated layout.');
 assert_contract(strpos($adminMarkup, 'map_studio_region_list_hidden_by_default') !== false, 'Admin settings should render the hidden-by-default region list option.');
+assert_contract(strpos($adminMarkup, 'map_studio_legend') !== false, 'Admin editor should render a WYSIWYG map legend field.');
+assert_contract(strpos($adminMarkup, 'Map Legend') !== false, 'Admin editor should label the map legend field.');
 unset($GLOBALS['map_studio_contract_current_user_can'], $GLOBALS['map_studio_contract_post_meta']);
 
 $GLOBALS['menu'] = [
@@ -369,6 +384,9 @@ assert_contract(strpos($frontendJs, 'map-studio__region-list-button') !== false,
 assert_contract(strpos($frontendJs, 'map-studio__region-list-toggle') !== false, 'Frontend JS should bind the region list toggle button.');
 assert_contract(strpos($frontendJs, 'is-region-list-collapsed') !== false, 'Frontend JS should toggle the collapsed region list class.');
 assert_contract(strpos($frontendJs, 'aria-expanded') !== false, 'Frontend JS should update sidebar toggle expanded state.');
+assert_contract(strpos($frontendJs, 'map-studio__legend-toggle') !== false, 'Frontend JS should bind the legend toggle button.');
+assert_contract(strpos($frontendJs, 'map-studio__legend-content') !== false, 'Frontend JS should read hidden legend content.');
+assert_contract(strpos($frontendJs, 'is-legend') !== false, 'Frontend JS should mark legend bubbles so they render without a region pointer.');
 
 $viewBoxAnimationJs = file_get_contents(dirname(__DIR__) . '/assets/js/viewbox-animation.js');
 assert_contract(is_string($viewBoxAnimationJs), 'ViewBox animation JS should be readable.');
@@ -395,5 +413,7 @@ assert_contract(strpos($frontendCss, '.map-studio__region-list-label') !== false
 assert_contract(strpos($frontendCss, 'is-region-list-left') !== false, 'Frontend CSS should support left-positioned region lists.');
 assert_contract(strpos($frontendCss, '.map-studio__region-list-toggle') !== false, 'Frontend CSS should style the region list toggle button.');
 assert_contract(strpos($frontendCss, '.map-studio.is-region-list-collapsed .map-studio__region-list') !== false, 'Frontend CSS should hide collapsed region lists.');
+assert_contract(strpos($frontendCss, '.map-studio__legend-toggle') !== false, 'Frontend CSS should style the legend action button.');
+assert_contract(strpos($frontendCss, '.map-studio__bubble.is-legend .map-studio__bubble-pointer') !== false, 'Frontend CSS should hide the region pointer for legend bubbles.');
 
 echo 'All contract checks passed.' . PHP_EOL;

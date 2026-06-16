@@ -64,6 +64,8 @@ final class Shortcode {
         $hasRegionList = (bool) $payload['regionListEnabled'] && $activeRegions !== [];
         $isRegionListHidden = $hasRegionList && (bool) $payload['regionListHiddenByDefault'];
         $regionListId = 'map-studio-region-list-' . $instanceId;
+        $hasLegend = $payload['legend'] !== '';
+        $legendId = 'map-studio-legend-' . $instanceId;
         $classes = ['map-studio', $instanceClass];
 
         if ($hasRegionList) {
@@ -90,6 +92,9 @@ final class Shortcode {
         $markup .= '<div class="map-studio__viewport">';
         $markup .= $svg->renderForInstance($instanceId, array_keys($activeRegions), $payload['regionColors']);
         $markup .= '<div class="map-studio__actions">';
+        if ($hasLegend) {
+            $markup .= $this->renderLegendToggle($legendId);
+        }
         if ($isRegionListHidden) {
             $markup .= $this->renderRegionListToggle($regionListId);
         }
@@ -104,6 +109,9 @@ final class Shortcode {
         $markup .= '<button type="button" class="map-studio__close" aria-label="' . \esc_attr__('Close map information', 'map-studio') . '">&times;</button>';
         $markup .= '<div class="map-studio__bubble-content" tabindex="-1"></div>';
         $markup .= '</div>';
+        if ($hasLegend) {
+            $markup .= '<div class="map-studio__legend-content" id="' . \esc_attr($legendId) . '" hidden>' . $payload['legend'] . '</div>';
+        }
         $markup .= '<script type="application/json" class="map-studio__data">' . $dataJson . '</script>';
         $markup .= '</div>';
 
@@ -113,6 +121,16 @@ final class Shortcode {
 
         $markup .= '</div>';
         $markup .= '</div>';
+
+        return $markup;
+    }
+
+    private function renderLegendToggle(string $legendId): string {
+        $markup = '<button type="button" class="map-studio__legend-toggle" aria-label="' . \esc_attr__('Show map legend', 'map-studio') . '" aria-controls="' . \esc_attr($legendId) . '">';
+        $markup .= '<svg class="map-studio__legend-toggle-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">';
+        $markup .= '<path d="M12 17v-6"></path><path d="M12 7h.01"></path><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>';
+        $markup .= '</svg>';
+        $markup .= '</button>';
 
         return $markup;
     }
