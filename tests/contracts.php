@@ -29,7 +29,7 @@ foreach ($map_studio_files as $map_studio_file) {
 }
 
 if (!defined('MAP_STUDIO_VERSION')) {
-    define('MAP_STUDIO_VERSION', '1.0.0');
+    define('MAP_STUDIO_VERSION', '1.0.1');
 }
 
 if (!defined('MAP_STUDIO_PATH')) {
