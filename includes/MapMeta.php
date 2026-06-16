@@ -23,7 +23,7 @@ final class MapMeta {
     ];
 
     /**
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool}
      */
     public static function defaultPayload(): array {
         return [
@@ -33,12 +33,13 @@ final class MapMeta {
             'colors' => self::DEFAULT_COLORS,
             'regionListEnabled' => false,
             'regionListPosition' => 'right',
+            'regionListHiddenByDefault' => false,
         ];
     }
 
     /**
      * @param array<string, mixed> $payload
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool}
      */
     public static function sanitizePayload(array $payload, string $lockedMapId = '', ?MapDefinition $mapDefinition = null): array {
         $sanitized = self::defaultPayload();
@@ -101,6 +102,7 @@ final class MapMeta {
 
         $sanitized['regionListEnabled'] = self::sanitizeBoolean($payload['regionListEnabled'] ?? false);
         $sanitized['regionListPosition'] = self::sanitizeRegionListPosition($payload['regionListPosition'] ?? 'right');
+        $sanitized['regionListHiddenByDefault'] = $sanitized['regionListEnabled'] && self::sanitizeBoolean($payload['regionListHiddenByDefault'] ?? false);
 
         return $sanitized;
     }
@@ -138,7 +140,7 @@ final class MapMeta {
     }
 
     /**
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool}
      */
     public static function get(int $postId, ?MapDefinition $mapDefinition = null): array {
         if (!function_exists('get_post_meta')) {

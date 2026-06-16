@@ -72,6 +72,14 @@
   order: 2;
 }
 
+.map-studio.is-region-list-collapsed .map-studio__body {
+  display: block;
+}
+
+.map-studio.is-region-list-collapsed .map-studio__region-list {
+  display: none;
+}
+
 .map-studio__viewport {
   position: relative;
   overflow: hidden;
@@ -127,11 +135,18 @@
   fill: var(--map-studio-region-custom-color, var(--map-studio-color-active));
 }
 
-.map-studio__reset {
+.map-studio__actions {
   position: absolute;
   top: var(--map-studio-space-md);
   right: var(--map-studio-space-md);
   z-index: 3;
+  display: flex;
+  gap: var(--map-studio-space-sm);
+  align-items: center;
+}
+
+.map-studio__reset,
+.map-studio__region-list-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -147,25 +162,31 @@
   transition: border-color var(--map-studio-control-transition), transform var(--map-studio-control-transition);
 }
 
-.map-studio__reset[hidden] {
+.map-studio__reset[hidden],
+.map-studio__region-list-toggle[hidden] {
   display: none;
 }
 
 .map-studio__reset:hover,
-.map-studio__reset:focus-visible {
+.map-studio__reset:focus-visible,
+.map-studio__region-list-toggle:hover,
+.map-studio__region-list-toggle:focus-visible {
   border-color: currentColor;
 }
 
-.map-studio__reset:active {
+.map-studio__reset:active,
+.map-studio__region-list-toggle:active {
   transform: scale(0.96);
 }
 
-.map-studio__reset-icon {
+.map-studio__reset-icon,
+.map-studio__region-list-toggle-icon {
   width: var(--map-studio-icon-size);
   height: var(--map-studio-icon-size);
 }
 
-.map-studio__reset-icon path {
+.map-studio__reset-icon path,
+.map-studio__region-list-toggle-icon path {
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
@@ -368,7 +389,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .map-studio__reset {
+  .map-studio__reset,
+  .map-studio__region-list-toggle {
     transition-duration: 1ms;
   }
 }

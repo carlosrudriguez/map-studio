@@ -15,6 +15,8 @@ window.MapStudio.init = (mapElement) => {
   const bubbleContent = mapElement.querySelector('.map-studio__bubble-content');
   const closeButton = mapElement.querySelector('.map-studio__close');
   const resetButton = mapElement.querySelector('.map-studio__reset');
+  const regionListToggle = mapElement.querySelector('.map-studio__region-list-toggle');
+  const regionList = mapElement.querySelector('.map-studio__region-list');
   const svgElement = mapElement.querySelector('.map-studio__svg');
   const viewport = mapElement.querySelector('.map-studio__viewport') || mapElement;
 
@@ -52,6 +54,7 @@ window.MapStudio.init = (mapElement) => {
     const activeControlHasFocus = activeElement && typeof activeElement.blur === 'function' && (
       closeButton.contains(activeElement) ||
       resetButton.contains(activeElement) ||
+      (regionListToggle && regionListToggle.contains(activeElement)) ||
       regionListButtons.some((button) => button.contains(activeElement))
     );
 
@@ -256,6 +259,20 @@ window.MapStudio.init = (mapElement) => {
     });
   };
 
+  const setRegionListCollapsed = (isCollapsed) => {
+    if (!regionList || !regionListToggle) {
+      return;
+    }
+
+    const showLabel = regionListToggle.getAttribute('data-map-studio-show-label') || 'Show region list';
+    const hideLabel = regionListToggle.getAttribute('data-map-studio-hide-label') || 'Hide region list';
+
+    mapElement.classList.toggle('is-region-list-collapsed', isCollapsed);
+    regionList.hidden = isCollapsed;
+    regionListToggle.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    regionListToggle.setAttribute('aria-label', isCollapsed ? showLabel : hideLabel);
+  };
+
   const resetMap = () => {
     if (selectedRegionElement) {
       selectedRegionElement.classList.remove('is-selected');
@@ -320,6 +337,15 @@ window.MapStudio.init = (mapElement) => {
     });
   });
 
+  if (regionListToggle && regionList) {
+    setRegionListCollapsed(mapElement.classList.contains('is-region-list-collapsed') || regionList.hidden);
+
+    regionListToggle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setRegionListCollapsed(!mapElement.classList.contains('is-region-list-collapsed'));
+    });
+  }
+
   closeButton.addEventListener('click', (event) => {
     event.stopPropagation();
     resetMap();
@@ -337,7 +363,7 @@ window.MapStudio.init = (mapElement) => {
       return;
     }
 
-    if (bubble.contains(target) || resetButton.contains(target) || target.closest('.map-studio__region-list')) {
+    if (bubble.contains(target) || resetButton.contains(target) || target.closest('.map-studio__actions') || target.closest('.map-studio__region-list')) {
       return;
     }
 

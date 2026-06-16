@@ -69,7 +69,7 @@ final class MapMetaBox {
         MapDashboardSection::open('setup', __('Map Setup', 'map-studio'), __('Choose the base map and public region list behavior.', 'map-studio'));
         echo '<div class="map-studio-admin__setup-grid">';
         $this->renderMapSelector($maps, $mapDefinition);
-        MapSettingsFields::renderRegionListToggle((bool) $payload['regionListEnabled'], $payload['regionListPosition']);
+        MapSettingsFields::renderRegionListToggle((bool) $payload['regionListEnabled'], $payload['regionListPosition'], (bool) $payload['regionListHiddenByDefault']);
         echo '</div>';
         MapDashboardSection::close();
 
@@ -150,6 +150,7 @@ final class MapMetaBox {
                 'colors' => $colors,
                 'regionListEnabled' => isset($_POST['map_studio_region_list_enabled']) ? '1' : '0',
                 'regionListPosition' => $this->postedString('map_studio_region_list_position'),
+                'regionListHiddenByDefault' => isset($_POST['map_studio_region_list_hidden_by_default']) ? '1' : '0',
             ],
             $lockedMapId,
             $mapDefinition

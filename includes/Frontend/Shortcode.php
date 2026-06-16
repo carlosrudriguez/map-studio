@@ -62,11 +62,18 @@ final class Shortcode {
         $instanceId = $this->nextInstanceId($mapId);
         $instanceClass = 'map-studio--instance-' . $instanceId;
         $hasRegionList = (bool) $payload['regionListEnabled'] && $activeRegions !== [];
+        $isRegionListHidden = $hasRegionList && (bool) $payload['regionListHiddenByDefault'];
+        $regionListId = 'map-studio-region-list-' . $instanceId;
         $classes = ['map-studio', $instanceClass];
 
         if ($hasRegionList) {
             $classes[] = 'has-region-list';
             $classes[] = 'is-region-list-' . $payload['regionListPosition'];
+        }
+
+        if ($isRegionListHidden) {
+            $classes[] = 'has-collapsible-region-list';
+            $classes[] = 'is-region-list-collapsed';
         }
 
         $this->enqueueAssets($instanceClass, $payload['colors'], $payload['regionColors']);
@@ -82,11 +89,16 @@ final class Shortcode {
         $markup .= '<div class="map-studio__body">';
         $markup .= '<div class="map-studio__viewport">';
         $markup .= $svg->renderForInstance($instanceId, array_keys($activeRegions), $payload['regionColors']);
+        $markup .= '<div class="map-studio__actions">';
+        if ($isRegionListHidden) {
+            $markup .= $this->renderRegionListToggle($regionListId);
+        }
         $markup .= '<button type="button" class="map-studio__reset" aria-label="' . \esc_attr__('Reset map zoom', 'map-studio') . '" hidden>';
         $markup .= '<svg class="map-studio__reset-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">';
         $markup .= '<path d="M7 4H4v3"></path><path d="M17 4h3v3"></path><path d="M20 17v3h-3"></path><path d="M4 17v3h3"></path>';
         $markup .= '</svg>';
         $markup .= '</button>';
+        $markup .= '</div>';
         $markup .= '<div class="map-studio__bubble" role="dialog" aria-hidden="true">';
         $markup .= '<span class="map-studio__bubble-pointer" aria-hidden="true"></span>';
         $markup .= '<button type="button" class="map-studio__close" aria-label="' . \esc_attr__('Close map information', 'map-studio') . '">&times;</button>';
@@ -96,7 +108,7 @@ final class Shortcode {
         $markup .= '</div>';
 
         if ($hasRegionList) {
-            $markup .= $this->renderRegionList($mapDefinition, $activeRegions, $payload['regionListPosition']);
+            $markup .= $this->renderRegionList($mapDefinition, $activeRegions, $payload['regionListPosition'], $regionListId, $isRegionListHidden);
         }
 
         $markup .= '</div>';
@@ -108,10 +120,11 @@ final class Shortcode {
     /**
      * @param array<string, string> $activeRegions
      */
-    private function renderRegionList(MapDefinition $mapDefinition, array $activeRegions, string $position): string {
+    private function renderRegionList(MapDefinition $mapDefinition, array $activeRegions, string $position, string $regionListId, bool $hidden): string {
         $activeRegionKeys = array_fill_keys(array_keys($activeRegions), true);
         $position = $position === 'left' ? 'left' : 'right';
-        $markup = '<aside class="map-studio__region-list is-position-' . \esc_attr($position) . '" aria-label="' . \esc_attr__('Map regions', 'map-studio') . '">';
+        $hiddenAttribute = $hidden ? ' hidden' : '';
+        $markup = '<aside class="map-studio__region-list is-position-' . \esc_attr($position) . '" aria-label="' . \esc_attr__('Map regions', 'map-studio') . '" id="' . \esc_attr($regionListId) . '"' . $hiddenAttribute . '>';
         $markup .= '<div class="map-studio__region-list-items" role="list">';
 
         foreach ($mapDefinition->shapes() as $shape) {
@@ -130,6 +143,18 @@ final class Shortcode {
 
         $markup .= '</div>';
         $markup .= '</aside>';
+
+        return $markup;
+    }
+
+    private function renderRegionListToggle(string $regionListId): string {
+        $showLabel = __('Show region list', 'map-studio');
+        $hideLabel = __('Hide region list', 'map-studio');
+        $markup = '<button type="button" class="map-studio__region-list-toggle" aria-label="' . \esc_attr($showLabel) . '" aria-controls="' . \esc_attr($regionListId) . '" aria-expanded="false" data-map-studio-show-label="' . \esc_attr($showLabel) . '" data-map-studio-hide-label="' . \esc_attr($hideLabel) . '">';
+        $markup .= '<svg class="map-studio__region-list-toggle-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">';
+        $markup .= '<path d="M8 6h12"></path><path d="M8 12h12"></path><path d="M8 18h12"></path><path d="M4 6h.01"></path><path d="M4 12h.01"></path><path d="M4 18h.01"></path>';
+        $markup .= '</svg>';
+        $markup .= '</button>';
 
         return $markup;
     }

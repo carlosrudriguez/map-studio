@@ -8,8 +8,9 @@ namespace MapStudio\Admin;
  * The fields depend on WordPress escaping helpers but keep form markup isolated.
  */
 final class MapSettingsFields {
-    public static function renderRegionListToggle(bool $enabled, string $position): void {
+    public static function renderRegionListToggle(bool $enabled, string $position, bool $hiddenByDefault): void {
         $checked = $enabled ? ' checked' : '';
+        $hiddenChecked = $hiddenByDefault ? ' checked' : '';
         $position = in_array($position, ['left', 'right'], true) ? $position : 'right';
 
         echo '<fieldset class="map-studio-admin__settings">';
@@ -21,6 +22,16 @@ final class MapSettingsFields {
         echo '<span class="map-studio-admin__switch-copy">';
         echo '<span class="map-studio-admin__switch-title">' . \esc_html__('Region list', 'map-studio') . '</span>';
         echo '<span class="map-studio-admin__switch-description" id="map_studio_region_list_help">' . \esc_html__('Show a clickable sidebar with regions that have content.', 'map-studio') . '</span>';
+        echo '</span>';
+        echo '</label>';
+        echo '</div>';
+        echo '<div class="map-studio-admin__settings-row">';
+        echo '<label class="map-studio-admin__switch" for="map_studio_region_list_hidden_by_default">';
+        echo '<input type="checkbox" class="map-studio-admin__switch-input" id="map_studio_region_list_hidden_by_default" name="map_studio_region_list_hidden_by_default" value="1" role="switch" aria-describedby="map_studio_region_list_hidden_help"' . $hiddenChecked . '>';
+        echo '<span class="map-studio-admin__switch-control" aria-hidden="true"><span class="map-studio-admin__switch-thumb"></span></span>';
+        echo '<span class="map-studio-admin__switch-copy">';
+        echo '<span class="map-studio-admin__switch-title">' . \esc_html__('Start sidebar hidden', 'map-studio') . '</span>';
+        echo '<span class="map-studio-admin__switch-description" id="map_studio_region_list_hidden_help">' . \esc_html__('Show the sidebar only after visitors use the public action button.', 'map-studio') . '</span>';
         echo '</span>';
         echo '</label>';
         echo '</div>';
