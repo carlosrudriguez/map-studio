@@ -421,6 +421,14 @@ assert_contract(strpos($frontendCss, '.map-studio__region-list-toggle') !== fals
 assert_contract(strpos($frontendCss, '.map-studio.is-region-list-collapsed .map-studio__region-list') !== false, 'Frontend CSS should hide collapsed region lists.');
 assert_contract(strpos($frontendCss, '.map-studio__legend-toggle') !== false, 'Frontend CSS should style the legend action button.');
 assert_contract(strpos($frontendCss, '.map-studio__bubble.is-legend .map-studio__bubble-pointer') !== false, 'Frontend CSS should hide the region pointer for legend bubbles.');
+$responsiveRulePositions = array_filter([
+    strpos($frontendCss, '@media'),
+    strpos($frontendCss, '@container'),
+], 'is_int');
+assert_contract($responsiveRulePositions !== [], 'Frontend CSS should define responsive rules for narrow map layouts.');
+$firstResponsiveRulePosition = min($responsiveRulePositions);
+$desktopFrontendCss = substr($frontendCss, 0, $firstResponsiveRulePosition);
+assert_contract(strpos($desktopFrontendCss, '.map-studio.has-collapsible-region-list.has-region-list .map-studio__body') === false, 'Collapsible region lists should not force mobile stacking at desktop widths.');
 assert_contract(strpos($frontendCss, '.map-studio.has-collapsible-region-list.has-region-list .map-studio__body') !== false, 'Collapsible region lists should open in a single readable column instead of a squeezed sidebar.');
 assert_contract(strpos($frontendCss, '@media (max-width: 782px)') !== false, 'Frontend CSS should stack region lists before narrow mobile layouts squeeze sidebar text.');
 assert_contract(strpos($frontendCss, 'container-name: map-studio') !== false, 'Frontend CSS should name the map component container for responsive region list layout.');
