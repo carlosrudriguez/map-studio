@@ -73,10 +73,12 @@ function current_user_can(string $capability, mixed ...$args): bool {
 
 function wp_enqueue_style(string $handle, string $src = '', array $deps = [], string|bool|null $ver = false, string $media = 'all'): void {
     $GLOBALS['map_studio_contract_enqueued_styles'][] = $handle;
+    $GLOBALS['map_studio_contract_enqueued_style_versions'][$handle][] = $ver;
 }
 
 function wp_enqueue_script(string $handle, string $src = '', array $deps = [], string|bool|null $ver = false, array|bool $args = []): void {
     $GLOBALS['map_studio_contract_enqueued_scripts'][] = $handle;
+    $GLOBALS['map_studio_contract_enqueued_script_versions'][$handle][] = $ver;
 }
 
 function wp_add_inline_style(string $handle, string $data): bool {
@@ -279,6 +281,10 @@ assert_contract(strpos($publishedShortcode, '<p>Map legend content.</p>') !== fa
 $publishedScripts = $GLOBALS['map_studio_contract_enqueued_scripts'] ?? [];
 assert_contract(in_array('map-studio-viewbox-animation', $publishedScripts, true), 'Published maps should enqueue the viewBox animation helper.');
 assert_contract(in_array('map-studio-frontend', $publishedScripts, true), 'Published maps should enqueue the frontend interaction script.');
+$publishedStyleVersions = $GLOBALS['map_studio_contract_enqueued_style_versions']['map-studio-frontend'] ?? [];
+$publishedScriptVersions = $GLOBALS['map_studio_contract_enqueued_script_versions']['map-studio-frontend'] ?? [];
+assert_contract($publishedStyleVersions !== [] && end($publishedStyleVersions) !== MAP_STUDIO_VERSION, 'Frontend CSS should use a file-based asset version so browser cache refreshes after CSS changes.');
+assert_contract($publishedScriptVersions !== [] && end($publishedScriptVersions) !== MAP_STUDIO_VERSION, 'Frontend JS should use a file-based asset version so browser cache refreshes after JS changes.');
 $publishedInlineCss = implode('', $GLOBALS['map_studio_contract_inline_styles']['map-studio-frontend'] ?? []);
 assert_contract(strpos($publishedInlineCss, '#aa5500') !== false, 'Published maps should include custom region color CSS.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__data"') !== false, 'Published maps should include data JSON.');
@@ -415,5 +421,12 @@ assert_contract(strpos($frontendCss, '.map-studio__region-list-toggle') !== fals
 assert_contract(strpos($frontendCss, '.map-studio.is-region-list-collapsed .map-studio__region-list') !== false, 'Frontend CSS should hide collapsed region lists.');
 assert_contract(strpos($frontendCss, '.map-studio__legend-toggle') !== false, 'Frontend CSS should style the legend action button.');
 assert_contract(strpos($frontendCss, '.map-studio__bubble.is-legend .map-studio__bubble-pointer') !== false, 'Frontend CSS should hide the region pointer for legend bubbles.');
+assert_contract(strpos($frontendCss, '.map-studio.has-collapsible-region-list.has-region-list .map-studio__body') !== false, 'Collapsible region lists should open in a single readable column instead of a squeezed sidebar.');
+assert_contract(strpos($frontendCss, '@media (max-width: 782px)') !== false, 'Frontend CSS should stack region lists before narrow mobile layouts squeeze sidebar text.');
+assert_contract(strpos($frontendCss, 'container-name: map-studio') !== false, 'Frontend CSS should name the map component container for responsive region list layout.');
+assert_contract(strpos($frontendCss, 'container-type: inline-size') !== false, 'Frontend CSS should use the map component width for responsive region list layout.');
+assert_contract(strpos($frontendCss, '@container map-studio (max-width: 782px)') !== false, 'Frontend CSS should stack region lists when the map container is narrow.');
+assert_contract(strpos($frontendCss, '.map-studio__actions button:focus') !== false, 'Frontend CSS should suppress native focus outlines on action buttons.');
+assert_contract(strpos($frontendCss, 'border-color: var(--map-studio-color-stroke)') !== false, 'Frontend CSS should avoid visible focus border changes on action buttons.');
 
 echo 'All contract checks passed.' . PHP_EOL;

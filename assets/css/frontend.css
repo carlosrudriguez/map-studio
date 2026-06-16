@@ -38,6 +38,8 @@
   position: relative;
   width: 100%;
   max-width: 100%;
+  container-name: map-studio;
+  container-type: inline-size;
 }
 
 .map-studio__body {
@@ -78,6 +80,20 @@
 
 .map-studio.is-region-list-collapsed .map-studio__region-list {
   display: none;
+}
+
+.map-studio.has-collapsible-region-list.has-region-list .map-studio__body {
+  grid-template-columns: 1fr;
+}
+
+.map-studio.has-collapsible-region-list .map-studio__viewport {
+  order: 1;
+}
+
+.map-studio.has-collapsible-region-list .map-studio__region-list {
+  order: 2;
+  width: 100%;
+  max-height: var(--map-studio-region-list-mobile-max-height);
 }
 
 .map-studio__viewport {
@@ -160,7 +176,9 @@
   box-shadow: var(--map-studio-shadow);
   color: var(--map-studio-color-bubble-text);
   cursor: pointer;
+  outline: none;
   transition: border-color var(--map-studio-control-transition), transform var(--map-studio-control-transition);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .map-studio__reset[hidden],
@@ -170,12 +188,17 @@
 }
 
 .map-studio__reset:hover,
-.map-studio__reset:focus-visible,
 .map-studio__legend-toggle:hover,
-.map-studio__legend-toggle:focus-visible,
-.map-studio__region-list-toggle:hover,
-.map-studio__region-list-toggle:focus-visible {
+.map-studio__region-list-toggle:hover {
   border-color: currentColor;
+}
+
+.map-studio__actions button:focus,
+.map-studio__actions button:focus-visible,
+.map-studio__actions button:active {
+  border-color: var(--map-studio-color-stroke);
+  box-shadow: var(--map-studio-shadow);
+  outline: none;
 }
 
 .map-studio__reset:active,
@@ -379,7 +402,7 @@
   box-shadow: inset var(--map-studio-region-list-selected-bar) 0 0 var(--map-studio-color-active);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 782px) {
   .map-studio.has-region-list .map-studio__body {
     grid-template-columns: 1fr;
   }
@@ -402,6 +425,26 @@
     width: calc(100% - var(--map-studio-space-md) * 2);
     max-height: min(280px, calc(100% - var(--map-studio-space-md) * 2));
     padding: var(--map-studio-space-sm);
+  }
+}
+
+@container map-studio (max-width: 782px) {
+  .map-studio.has-region-list .map-studio__body {
+    grid-template-columns: 1fr;
+  }
+
+  .map-studio.is-region-list-left .map-studio__viewport,
+  .map-studio.is-region-list-right .map-studio__viewport {
+    order: 1;
+  }
+
+  .map-studio.is-region-list-left .map-studio__region-list,
+  .map-studio.is-region-list-right .map-studio__region-list {
+    order: 2;
+  }
+
+  .map-studio__region-list {
+    max-height: var(--map-studio-region-list-mobile-max-height);
   }
 }
 

@@ -186,14 +186,14 @@ final class Shortcode {
             'map-studio-frontend',
             MAP_STUDIO_URL . 'assets/css/frontend.css',
             [],
-            MAP_STUDIO_VERSION
+            $this->assetVersion('assets/css/frontend.css')
         );
 
         \wp_enqueue_script(
             'map-studio-viewbox-animation',
             MAP_STUDIO_URL . 'assets/js/viewbox-animation.js',
             [],
-            MAP_STUDIO_VERSION,
+            $this->assetVersion('assets/js/viewbox-animation.js'),
             true
         );
 
@@ -201,7 +201,7 @@ final class Shortcode {
             'map-studio-frontend',
             MAP_STUDIO_URL . 'assets/js/frontend.js',
             ['map-studio-viewbox-animation'],
-            MAP_STUDIO_VERSION,
+            $this->assetVersion('assets/js/frontend.js'),
             true
         );
 
@@ -234,6 +234,13 @@ final class Shortcode {
         }
 
         \wp_add_inline_style('map-studio-frontend', $css);
+    }
+
+    private function assetVersion(string $relativePath): string {
+        $path = MAP_STUDIO_PATH . ltrim($relativePath, '/');
+        $modifiedAt = file_exists($path) ? filemtime($path) : false;
+
+        return is_int($modifiedAt) ? MAP_STUDIO_VERSION . '-' . $modifiedAt : MAP_STUDIO_VERSION;
     }
 
     private function cssAttributeValue(string $value): string {
