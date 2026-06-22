@@ -65,6 +65,7 @@ final class Shortcode {
         $isRegionListHidden = $hasRegionList && (bool) $payload['regionListHiddenByDefault'];
         $regionListId = 'map-studio-region-list-' . $instanceId;
         $hasLegend = $payload['legend'] !== '';
+        $formattedLegend = $hasLegend ? $this->formatLegend($payload['legend']) : '';
         $legendId = 'map-studio-legend-' . $instanceId;
         $classes = ['map-studio', $instanceClass];
 
@@ -110,7 +111,7 @@ final class Shortcode {
         $markup .= '<div class="map-studio__bubble-content" tabindex="-1"></div>';
         $markup .= '</div>';
         if ($hasLegend) {
-            $markup .= '<div class="map-studio__legend-content" id="' . \esc_attr($legendId) . '" hidden>' . $payload['legend'] . '</div>';
+            $markup .= '<div class="map-studio__legend-content" id="' . \esc_attr($legendId) . '" hidden>' . $formattedLegend . '</div>';
         }
         $markup .= '<script type="application/json" class="map-studio__data">' . $dataJson . '</script>';
         $markup .= '</div>';
@@ -280,6 +281,14 @@ final class Shortcode {
         }
 
         return '';
+    }
+
+    private function formatLegend(string $legend): string {
+        if (function_exists('wpautop')) {
+            return \wpautop($legend);
+        }
+
+        return '<p>' . nl2br($legend, false) . '</p>';
     }
 
     private function nextInstanceId(int $mapId): string {

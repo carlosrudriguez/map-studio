@@ -101,6 +101,27 @@ function wp_json_encode(mixed $value, int $flags = 0, int $depth = 512): string|
     return json_encode($value, $flags, $depth);
 }
 
+function wpautop(string $text, bool $br = true): string {
+    $paragraphs = preg_split('/\n\s*\n/', trim($text)) ?: [];
+    $formatted = [];
+
+    foreach ($paragraphs as $paragraph) {
+        $paragraph = trim($paragraph);
+
+        if ($paragraph === '') {
+            continue;
+        }
+
+        if ($br) {
+            $paragraph = preg_replace('/\n/', "<br />\n", $paragraph) ?? $paragraph;
+        }
+
+        $formatted[] = '<p>' . $paragraph . '</p>';
+    }
+
+    return implode("\n", $formatted);
+}
+
 function esc_attr(string $text): string {
     return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
 }
@@ -343,6 +364,21 @@ $publishedInlineCss = implode('', $GLOBALS['map_studio_contract_inline_styles'][
 assert_contract(strpos($publishedInlineCss, '#aa5500') !== false, 'Published maps should include custom region color CSS.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__data"') !== false, 'Published maps should include data JSON.');
 
+$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = [
+    'mapId' => 'MX',
+    'regions' => ['MX-JAL' => '<p>Jalisco visible content.</p>'],
+    'regionListEnabled' => true,
+    'legend' => "First line\nSecond line",
+];
+$GLOBALS['map_studio_contract_posts'][14] = (object) [
+    'ID' => 14,
+    'post_type' => \MapStudio\Admin\MapPostType::POST_TYPE,
+    'post_status' => 'publish',
+];
+$publishedMultilineLegend = (new \MapStudio\Frontend\Shortcode())->render(['id' => 14]);
+assert_contract(strpos($publishedMultilineLegend, '<p>First line<br />') !== false, 'Public legends should preserve editor line breaks.');
+assert_contract(strpos($publishedMultilineLegend, 'Second line</p>') !== false, 'Public legends should keep multiline content in a formatted element.');
+
 $GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco visible content.</p>"},"regionListEnabled":false}';
 $GLOBALS['map_studio_contract_posts'][12] = (object) [
     'ID' => 12,
@@ -498,6 +534,11 @@ assert_contract(strpos($frontendJs, 'aria-expanded') !== false, 'Frontend JS sho
 assert_contract(strpos($frontendJs, 'map-studio__legend-toggle') !== false, 'Frontend JS should bind the legend toggle button.');
 assert_contract(strpos($frontendJs, 'map-studio__legend-content') !== false, 'Frontend JS should read hidden legend content.');
 assert_contract(strpos($frontendJs, 'is-legend') !== false, 'Frontend JS should mark legend bubbles so they render without a region pointer.');
+
+$shortcodePhp = file_get_contents(dirname(__DIR__) . '/includes/Frontend/Shortcode.php');
+assert_contract(is_string($shortcodePhp), 'Frontend shortcode source should be readable.');
+assert_contract(strpos($shortcodePhp, 'formatLegend') !== false, 'Frontend shortcode should format legend content at the render boundary.');
+assert_contract(strpos($shortcodePhp, 'wpautop') !== false, 'Frontend legend formatting should use WordPress paragraph handling when available.');
 
 $viewBoxAnimationJs = file_get_contents(dirname(__DIR__) . '/assets/js/viewbox-animation.js');
 assert_contract(is_string($viewBoxAnimationJs), 'ViewBox animation JS should be readable.');
