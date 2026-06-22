@@ -413,6 +413,14 @@ assert_contract(strpos($frontendCss, '.map-studio__bubble.is-below-region .map-s
 assert_contract(strpos($frontendCss, '.map-studio__bubble-pointer::before') !== false, 'Frontend CSS should draw the bubble pointer border as a triangle.');
 assert_contract(strpos($frontendCss, '.map-studio__bubble-pointer::after') !== false, 'Frontend CSS should draw the bubble pointer fill as a triangle.');
 assert_contract(strpos($frontendCss, 'rotate(45deg)') === false, 'Frontend CSS should not use a rotated square for the bubble pointer.');
+assert_contract(
+    preg_match('/\.map-studio__close\s*\{[^}]*position:\s*absolute;/s', $frontendCss) === 1,
+    'Bubble close button should not occupy a separate flex row above the content.'
+);
+assert_contract(
+    preg_match('/\.map-studio__bubble-content\s*>\s*:first-child\s*\{[^}]*padding-right:\s*calc\(var\(--map-studio-bubble-close-size\)\s*\+\s*var\(--map-studio-space-xs\)\);/s', $frontendCss) === 1,
+    'Bubble first content block should reserve space for the overlaid close button.'
+);
 assert_contract(strpos($frontendCss, '.map-studio__region-list') !== false, 'Frontend CSS should style the public region list.');
 assert_contract(strpos($frontendCss, '.map-studio__region-list-item') !== false, 'Frontend CSS should expose a public region list item hook.');
 assert_contract(strpos($frontendCss, '.map-studio__region-list-label') !== false, 'Frontend CSS should expose a public region list label hook.');

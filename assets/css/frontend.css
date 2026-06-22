@@ -29,6 +29,7 @@
   --map-studio-bubble-pointer-inner-half: calc(var(--map-studio-bubble-pointer-half) - var(--map-studio-bubble-pointer-border));
   --map-studio-bubble-pointer-x: 50%;
   --map-studio-bubble-pointer-shadow: 0 8px 14px rgb(0 0 0 / 10%);
+  --map-studio-bubble-close-size: 32px;
   --map-studio-region-list-min-width: 180px;
   --map-studio-region-list-width: 240px;
   --map-studio-region-list-max-height: 460px;
@@ -310,6 +311,7 @@
 
 .map-studio__bubble-content > :first-child {
   margin-top: 0;
+  padding-right: calc(var(--map-studio-bubble-close-size) + var(--map-studio-space-xs));
 }
 
 .map-studio__bubble-content > :last-child {
@@ -317,10 +319,11 @@
 }
 
 .map-studio__close {
-  align-self: flex-end;
-  width: 32px;
-  height: 32px;
-  margin: calc(var(--map-studio-space-xs) * -1) calc(var(--map-studio-space-xs) * -1) var(--map-studio-space-xs) 0;
+  position: absolute;
+  top: var(--map-studio-space-sm);
+  right: var(--map-studio-space-sm);
+  width: var(--map-studio-bubble-close-size);
+  height: var(--map-studio-bubble-close-size);
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--map-studio-radius-sm);
