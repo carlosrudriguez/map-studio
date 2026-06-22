@@ -19,6 +19,7 @@ window.MapStudio.init = (mapElement) => {
   const legendContent = mapElement.querySelector('.map-studio__legend-content');
   const regionListToggle = mapElement.querySelector('.map-studio__region-list-toggle');
   const regionList = mapElement.querySelector('.map-studio__region-list');
+  const regionSearch = mapElement.querySelector('.map-studio__region-search');
   const svgElement = mapElement.querySelector('.map-studio__svg');
   const viewport = mapElement.querySelector('.map-studio__viewport') || mapElement;
 
@@ -42,12 +43,31 @@ window.MapStudio.init = (mapElement) => {
 
   const activeRegionElements = Array.from(mapElement.querySelectorAll('.map-studio__region.is-active'));
   const regionListButtons = Array.from(mapElement.querySelectorAll('.map-studio__region-list-button'));
+  const regionListItems = Array.from(mapElement.querySelectorAll('.map-studio__region-list-item'));
   const zoomSettings = { minScale: 1.6, maxScale: 3.4, viewportRatio: 0.44 };
 
   const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max));
   const regionKeyFor = (regionElement) => regionElement.getAttribute('data-map-studio-region-key') || '';
 
   const contentFor = (regionElement) => contentByRegion[regionKeyFor(regionElement)] || '';
+  const normalizeSearchText = (value) => (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase();
+
+  const filterRegionList = () => {
+    if (!regionSearch) {
+      return;
+    }
+
+    const query = normalizeSearchText(regionSearch.value);
+
+    regionListItems.forEach((item) => {
+      const label = item.querySelector('.map-studio__region-list-label');
+      const labelText = normalizeSearchText(label ? label.textContent : '');
+      item.hidden = query !== '' && !labelText.includes(query);
+    });
+  };
 
   const isMapActive = () => bubble.classList.contains('is-open') || mapElement.classList.contains('is-zoomed');
 
@@ -360,6 +380,11 @@ window.MapStudio.init = (mapElement) => {
       }
     });
   });
+
+  if (regionSearch) {
+    regionSearch.addEventListener('input', filterRegionList);
+    filterRegionList();
+  }
 
   if (regionListToggle && regionList) {
     setRegionListCollapsed(mapElement.classList.contains('is-region-list-collapsed') || regionList.hidden);

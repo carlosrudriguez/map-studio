@@ -18,6 +18,10 @@
   const parseJsonField = (field) => parseJsonText(field.value || '{}', {});
 
   const normalizeContent = (content) => (content || '').trim();
+  const normalizeSearchText = (value) => (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase();
 
   const normalizeColor = (color) => {
     const value = (color || '').trim().toLowerCase();
@@ -30,6 +34,7 @@
     const mapsDataElement = root.querySelector('.map-studio-admin__maps-data');
     const summary = root.querySelector('[data-map-studio-summary]');
     const regionList = root.querySelector('.map-studio-admin__regions');
+    const regionFilter = root.querySelector('.map-studio-admin__region-filter');
     const mapSelect = root.querySelector('.map-studio-admin__map-select');
     const mapField = root.querySelector('[name="map_studio_map_id"]');
     const colorPanel = root.querySelector('.map-studio-admin__region-color');
@@ -125,6 +130,20 @@
       });
 
       updateSummary();
+    };
+
+    const filterRegionButtons = () => {
+      if (!regionFilter) {
+        return;
+      }
+
+      const query = normalizeSearchText(regionFilter.value);
+
+      buttons.forEach((button) => {
+        const label = button.querySelector('.map-studio-admin__region-label');
+        const labelText = normalizeSearchText(label ? label.textContent : '');
+        button.hidden = query !== '' && !labelText.includes(query);
+      });
     };
 
     const updateRegionColorControls = () => {
@@ -229,6 +248,7 @@
 
       updateRegionColorControls();
       updateButtons();
+      filterRegionButtons();
     };
 
     const bindTinyEditor = (editor) => {
@@ -254,6 +274,10 @@
     }
 
     textarea.addEventListener('input', storeSelectedContent);
+
+    if (regionFilter) {
+      regionFilter.addEventListener('input', filterRegionButtons);
+    }
 
     if (colorInput && colorToggle) {
       colorInput.addEventListener('input', () => {

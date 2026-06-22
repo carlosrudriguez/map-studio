@@ -116,7 +116,15 @@ final class Shortcode {
         $markup .= '</div>';
 
         if ($hasRegionList) {
-            $markup .= $this->renderRegionList($mapDefinition, $activeRegions, $payload['regionListPosition'], $regionListId, $isRegionListHidden);
+            $markup .= $this->renderRegionList(
+                $mapDefinition,
+                $activeRegions,
+                $payload['regionListPosition'],
+                $regionListId,
+                $isRegionListHidden,
+                (bool) $payload['regionSearchEnabled'],
+                $payload['regionSearchPlaceholder']
+            );
         }
 
         $markup .= '</div>';
@@ -138,11 +146,24 @@ final class Shortcode {
     /**
      * @param array<string, string> $activeRegions
      */
-    private function renderRegionList(MapDefinition $mapDefinition, array $activeRegions, string $position, string $regionListId, bool $hidden): string {
+    private function renderRegionList(
+        MapDefinition $mapDefinition,
+        array $activeRegions,
+        string $position,
+        string $regionListId,
+        bool $hidden,
+        bool $searchEnabled,
+        string $searchPlaceholder
+    ): string {
         $activeRegionKeys = array_fill_keys(array_keys($activeRegions), true);
         $position = $position === 'left' ? 'left' : 'right';
         $hiddenAttribute = $hidden ? ' hidden' : '';
         $markup = '<aside class="map-studio__region-list is-position-' . \esc_attr($position) . '" aria-label="' . \esc_attr__('Map regions', 'map-studio') . '" id="' . \esc_attr($regionListId) . '"' . $hiddenAttribute . '>';
+
+        if ($searchEnabled) {
+            $markup .= '<input type="search" class="map-studio__region-search" aria-label="' . \esc_attr__('Search map regions', 'map-studio') . '" placeholder="' . \esc_attr($searchPlaceholder) . '" autocomplete="off">';
+        }
+
         $markup .= '<div class="map-studio__region-list-items" role="list">';
 
         foreach ($mapDefinition->shapes() as $shape) {

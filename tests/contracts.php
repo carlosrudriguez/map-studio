@@ -14,6 +14,7 @@ $map_studio_files = [
     'includes/Admin/Menu.php',
     'includes/Admin/MapPostType.php',
     'includes/Admin/MapListTable.php',
+    'includes/Admin/MapDuplicateAction.php',
     'includes/Admin/MapDashboardSection.php',
     'includes/Admin/MapSettingsFields.php',
     'includes/Admin/MapMetaBox.php',
@@ -53,6 +54,16 @@ function assert_contract(bool $condition, string $message): void {
 
 function get_post_meta(int $post_id, string $key, bool $single = false): mixed {
     return $GLOBALS['map_studio_contract_post_meta'][$key] ?? '';
+}
+
+function update_post_meta(int $post_id, string $key, mixed $value): bool {
+    $GLOBALS['map_studio_contract_saved_post_meta'][$post_id][$key] = $value;
+    return true;
+}
+
+function delete_post_meta(int $post_id, string $key): bool {
+    unset($GLOBALS['map_studio_contract_saved_post_meta'][$post_id][$key]);
+    return true;
 }
 
 function shortcode_atts(array $pairs, array $atts, string $shortcode = ''): array {
@@ -110,8 +121,33 @@ function esc_html__(string $text, string $domain = 'default'): string {
     return esc_html($text);
 }
 
+function esc_url(string $url): string {
+    return $url;
+}
+
 function __(string $text, string $domain = 'default'): string {
     return $text;
+}
+
+function admin_url(string $path = ''): string {
+    return 'https://example.test/wp-admin/' . ltrim($path, '/');
+}
+
+function wp_nonce_url(string $action_url, string $action, string $name = '_wpnonce'): string {
+    return $action_url . '&' . rawurlencode($name) . '=contract-nonce&nonce_action=' . rawurlencode($action);
+}
+
+function get_post_type_object(string $post_type): object {
+    return (object) ['cap' => (object) ['create_posts' => 'edit_posts']];
+}
+
+function wp_insert_post(array $postarr, bool $wp_error = false): int|object {
+    $GLOBALS['map_studio_contract_inserted_post'] = $postarr;
+    return $GLOBALS['map_studio_contract_insert_result'] ?? 100;
+}
+
+function is_wp_error(mixed $thing): bool {
+    return is_object($thing) && ($thing->is_wp_error ?? false) === true;
 }
 
 function wp_nonce_field(string $action, string $name): void {
@@ -170,6 +206,8 @@ $payload = \MapStudio\MapMeta::sanitizePayload(
         'regionListEnabled' => '1',
         'regionListPosition' => 'left',
         'regionListHiddenByDefault' => '1',
+        'regionSearchEnabled' => '1',
+        'regionSearchPlaceholder' => '  Buscar región  ',
         'legend' => '<p>Legend <strong>content</strong></p><script>alert(1)</script>',
     ],
     '',
@@ -188,6 +226,8 @@ assert_contract(!isset($payload['regionColors']['MX-BCN']), 'Invalid region colo
 assert_contract($payload['regionListEnabled'] === true, 'Region list setting should be saved when enabled.');
 assert_contract($payload['regionListPosition'] === 'left', 'Region list position should be saved when valid.');
 assert_contract($payload['regionListHiddenByDefault'] === true, 'Region list hidden-by-default setting should be saved when enabled.');
+assert_contract($payload['regionSearchEnabled'] === true, 'Region search setting should be saved when the region list is enabled.');
+assert_contract($payload['regionSearchPlaceholder'] === 'Buscar región', 'Region search placeholder should be sanitized as plain text.');
 assert_contract(isset($payload['legend']) && strpos($payload['legend'], '<strong>content</strong>') !== false, 'Map legend content should be saved.');
 assert_contract(isset($payload['legend']) && strpos($payload['legend'], '<script>') === false, 'Map legend content should be sanitized.');
 
@@ -195,6 +235,8 @@ $defaultSettingsPayload = \MapStudio\MapMeta::sanitizePayload([], '', $maps['MX'
 assert_contract($defaultSettingsPayload['regionListEnabled'] === false, 'Region list setting should default to disabled.');
 assert_contract($defaultSettingsPayload['regionListPosition'] === 'right', 'Region list position should default to right.');
 assert_contract($defaultSettingsPayload['regionListHiddenByDefault'] === false, 'Region list hidden-by-default setting should default to disabled.');
+assert_contract($defaultSettingsPayload['regionSearchEnabled'] === false, 'Region search should default to disabled.');
+assert_contract($defaultSettingsPayload['regionSearchPlaceholder'] === 'Search…', 'Region search placeholder should have a stable default.');
 assert_contract(($defaultSettingsPayload['legend'] ?? null) === '', 'Map legend should default to empty.');
 
 $invalidSettingsPayload = \MapStudio\MapMeta::sanitizePayload(['regionListPosition' => 'top'], '', $maps['MX']);
@@ -202,6 +244,15 @@ assert_contract($invalidSettingsPayload['regionListPosition'] === 'right', 'Inva
 
 $disabledHiddenSettingsPayload = \MapStudio\MapMeta::sanitizePayload(['regionListEnabled' => '0', 'regionListHiddenByDefault' => '1'], '', $maps['MX']);
 assert_contract($disabledHiddenSettingsPayload['regionListHiddenByDefault'] === false, 'Hidden-by-default should not be enabled when the region list is disabled.');
+
+$disabledSearchPayload = \MapStudio\MapMeta::sanitizePayload(['regionListEnabled' => '0', 'regionSearchEnabled' => '1'], '', $maps['MX']);
+assert_contract($disabledSearchPayload['regionSearchEnabled'] === false, 'Region search should be disabled when the region list is disabled.');
+
+$emptySearchPlaceholderPayload = \MapStudio\MapMeta::sanitizePayload(['regionSearchPlaceholder' => '   '], '', $maps['MX']);
+assert_contract($emptySearchPlaceholderPayload['regionSearchPlaceholder'] === 'Search…', 'Empty search placeholders should use the default.');
+
+$unsafeSearchPlaceholderPayload = \MapStudio\MapMeta::sanitizePayload(['regionSearchPlaceholder' => '<strong>Search</strong>'], '', $maps['MX']);
+assert_contract($unsafeSearchPlaceholderPayload['regionSearchPlaceholder'] === 'Search', 'Search placeholders should contain plain text only.');
 
 $emptyLegendPayload = \MapStudio\MapMeta::sanitizePayload(['legend' => '   '], '', $maps['MX']);
 assert_contract(($emptyLegendPayload['legend'] ?? null) === '', 'Empty map legend content should not be saved.');
@@ -245,7 +296,7 @@ assert_contract($jsonMetaPayload['regionListHiddenByDefault'] === true, 'JSON st
 assert_contract(($jsonMetaPayload['legend'] ?? null) === '<p>JSON legend</p>', 'JSON string meta legend should be decoded.');
 unset($GLOBALS['map_studio_contract_post_meta']);
 
-$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco visible content.</p>"},"regionColors":{"MX-SON":"#aa5500"},"colors":{"inactive":"#d1d5db"},"regionListEnabled":true,"regionListPosition":"left","legend":"<p>Map legend content.</p>"}';
+$GLOBALS['map_studio_contract_post_meta'][\MapStudio\MapMeta::META_KEY] = '{"mapId":"MX","regions":{"MX-JAL":"<p>Jalisco visible content.</p>"},"regionColors":{"MX-SON":"#aa5500"},"colors":{"inactive":"#d1d5db"},"regionListEnabled":true,"regionListPosition":"left","regionSearchEnabled":true,"regionSearchPlaceholder":"Buscar región…","legend":"<p>Map legend content.</p>"}';
 $GLOBALS['map_studio_contract_posts'][10] = (object) [
     'ID' => 10,
     'post_type' => \MapStudio\Admin\MapPostType::POST_TYPE,
@@ -272,6 +323,9 @@ assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-item
 assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-button" data-map-studio-region-key="MX-JAL"') !== false, 'Region list should include active regions.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-label">Jalisco</span>') !== false, 'Region list labels should have a targetable label class.');
 assert_contract(strpos($publishedShortcode, 'Jalisco') !== false, 'Region list should render region labels.');
+assert_contract(strpos($publishedShortcode, 'class="map-studio__region-search"') !== false, 'Enabled region search should render above the public region list.');
+assert_contract(strpos($publishedShortcode, 'placeholder="Buscar región…"') !== false, 'Public region search should render the configured placeholder.');
+assert_contract(strpos($publishedShortcode, 'map-studio__region-search') < strpos($publishedShortcode, 'map-studio__region-list-items'), 'Public region search should render before region-list items.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__region-list-button" data-map-studio-region-key="MX-SON"') === false, 'Region list should not include color-only regions.');
 assert_contract(strpos($publishedShortcode, 'map-studio__region-list-toggle') === false, 'Visible region lists should not render a sidebar toggle button.');
 assert_contract(strpos($publishedShortcode, 'class="map-studio__legend-toggle"') !== false, 'Maps with legend content should render a legend action button.');
@@ -297,6 +351,7 @@ $GLOBALS['map_studio_contract_posts'][12] = (object) [
 ];
 $publishedWithoutList = (new \MapStudio\Frontend\Shortcode())->render(['id' => 12]);
 assert_contract(strpos($publishedWithoutList, 'class="map-studio__region-list"') === false, 'Disabled region list setting should not render a public region list.');
+assert_contract(strpos($publishedWithoutList, 'map-studio__region-search') === false, 'Region search should not render without a public region list.');
 assert_contract(strpos($publishedWithoutList, 'map-studio__region-list-toggle') === false, 'Disabled region list setting should not render a sidebar toggle button.');
 assert_contract(strpos($publishedWithoutList, 'map-studio__legend-toggle') === false, 'Maps without legend content should not render a legend action button.');
 
@@ -329,6 +384,10 @@ assert_contract(strpos($adminMarkup, 'map-studio-admin__section is-appearance') 
 assert_contract(strpos($adminMarkup, 'map-studio-admin__section-title') !== false, 'Admin editor sections should render titled headers.');
 assert_contract(strpos($adminMarkup, 'map-studio-admin__appearance-grid') !== false, 'Appearance controls should render in a dedicated layout.');
 assert_contract(strpos($adminMarkup, 'map_studio_region_list_hidden_by_default') !== false, 'Admin settings should render the hidden-by-default region list option.');
+assert_contract(strpos($adminMarkup, 'name="map_studio_region_search_enabled"') !== false, 'Map settings should render the frontend region-search toggle.');
+assert_contract(strpos($adminMarkup, 'name="map_studio_region_search_placeholder"') !== false, 'Map settings should render the frontend search placeholder field.');
+assert_contract(strpos($adminMarkup, 'class="map-studio-admin__region-filter"') !== false, 'Admin region content should render an always-available search field.');
+assert_contract(strpos($adminMarkup, 'map-studio-admin__region-filter') < strpos($adminMarkup, 'map-studio-admin__regions'), 'Admin region filter should render above the region buttons.');
 assert_contract(strpos($adminMarkup, 'map_studio_legend') !== false, 'Admin editor should render a WYSIWYG map legend field.');
 assert_contract(strpos($adminMarkup, 'Map Legend') !== false, 'Admin editor should label the map legend field.');
 unset($GLOBALS['map_studio_contract_current_user_can'], $GLOBALS['map_studio_contract_post_meta']);
@@ -346,6 +405,30 @@ $GLOBALS['map_studio_contract_add_menu_page_calls'] = [];
 assert_contract($GLOBALS['map_studio_contract_add_menu_page_calls'] === [\MapStudio\Admin\Menu::SLUG], 'Missing Map Studio parent menu should be created.');
 unset($GLOBALS['menu'], $GLOBALS['map_studio_contract_add_menu_page_calls']);
 
+$GLOBALS['map_studio_contract_current_user_can']['edit_post'] = true;
+$GLOBALS['map_studio_contract_current_user_can']['edit_posts'] = true;
+$listTable = new \MapStudio\Admin\MapListTable();
+$duplicateActions = $listTable->addDuplicateAction(
+    ['edit' => '<a href="#">Edit</a>'],
+    (object) [
+        'ID' => 45,
+        'post_type' => \MapStudio\Admin\MapPostType::POST_TYPE,
+    ]
+);
+assert_contract(isset($duplicateActions['map_studio_duplicate']), 'Map rows should include a Duplicate action.');
+assert_contract(strpos($duplicateActions['map_studio_duplicate'], 'action=map_studio_duplicate') !== false, 'Duplicate action should target its dedicated admin action.');
+assert_contract(strpos($duplicateActions['map_studio_duplicate'], 'post=45') !== false, 'Duplicate action should identify the source map.');
+assert_contract(strpos($duplicateActions['map_studio_duplicate'], 'nonce_action=map_studio_duplicate_45') !== false, 'Duplicate action should use a source-specific nonce.');
+assert_contract(strpos($duplicateActions['map_studio_duplicate'], '>Duplicate<') !== false, 'Duplicate action should use the expected label.');
+
+$otherPostActions = $listTable->addDuplicateAction([], (object) ['ID' => 46, 'post_type' => 'post']);
+assert_contract(!isset($otherPostActions['map_studio_duplicate']), 'Other post types should not expose the Map Studio duplicate action.');
+
+$GLOBALS['map_studio_contract_current_user_can']['edit_post'] = false;
+$forbiddenActions = $listTable->addDuplicateAction([], (object) ['ID' => 45, 'post_type' => \MapStudio\Admin\MapPostType::POST_TYPE]);
+assert_contract(!isset($forbiddenActions['map_studio_duplicate']), 'Users unable to edit the source map should not see Duplicate.');
+unset($GLOBALS['map_studio_contract_current_user_can']);
+
 assert_contract(file_exists(dirname(__DIR__) . '/map-studio.php'), 'Main plugin file is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/includes/Plugin.php'), 'Plugin class is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/maps/MX.svg'), 'Mexico SVG is missing from maps directory.');
@@ -356,16 +439,35 @@ assert_contract(file_exists(dirname(__DIR__) . '/assets/js/viewbox-animation.js'
 assert_contract(file_exists(dirname(__DIR__) . '/assets/js/frontend.js'), 'Frontend JS is missing.');
 assert_contract(file_exists(dirname(__DIR__) . '/assets/css/frontend.css'), 'Frontend CSS is missing.');
 
+$readme = file_get_contents(dirname(__DIR__) . '/README.md');
+assert_contract(is_string($readme), 'README should be readable.');
+assert_contract(stripos($readme, 'region search') !== false, 'README should document public region search.');
+assert_contract(stripos($readme, 'Duplicate') !== false, 'README should document duplicating a map.');
+
 $adminJs = file_get_contents(dirname(__DIR__) . '/assets/js/admin.js');
 assert_contract(is_string($adminJs), 'Admin JS should be readable.');
 assert_contract(strpos($adminJs, 'map-studio-admin__region-colors-json') !== false, 'Admin JS should synchronize region color JSON.');
 assert_contract(strpos($adminJs, 'map_studio_region_color') !== false, 'Admin JS should manage the selected region color picker.');
+assert_contract(strpos($adminJs, "querySelector('.map-studio-admin__region-filter')") !== false, 'Admin JS should bind the region filter.');
+assert_contract(strpos($adminJs, ".normalize('NFD')") !== false, 'Admin region filtering should normalize accented labels.');
+assert_contract(strpos($adminJs, 'button.hidden =') !== false, 'Admin filtering should hide nonmatching buttons.');
+assert_contract(
+    preg_match('/const renderRegionButtons = \(\) => \{.*?filterRegionButtons\(\);.*?\};/s', $adminJs) === 1,
+    'Admin region filtering should be reapplied after region buttons are rebuilt.'
+);
 
 $adminDashboardCss = file_get_contents(dirname(__DIR__) . '/assets/css/admin-dashboard.css');
 assert_contract(is_string($adminDashboardCss), 'Admin dashboard CSS should be readable.');
 assert_contract(strpos($adminDashboardCss, '.map-studio-admin__section') !== false, 'Admin dashboard CSS should style dashboard sections.');
 assert_contract(strpos($adminDashboardCss, '.map-studio-admin__setup-grid') !== false, 'Admin dashboard CSS should style the map setup section.');
 assert_contract(strpos($adminDashboardCss, '.map-studio-admin__appearance-grid') !== false, 'Admin dashboard CSS should style the appearance section.');
+
+$adminCss = file_get_contents(dirname(__DIR__) . '/assets/css/admin.css');
+assert_contract(is_string($adminCss), 'Admin CSS should be readable.');
+assert_contract(
+    preg_match('/\.map-studio-admin__region-button\[hidden\]\s*\{[^}]*display:\s*none;/s', $adminCss) === 1,
+    'Filtered backend region buttons should remain hidden despite their flex display rule.'
+);
 
 $mapSettingsFields = file_get_contents(dirname(__DIR__) . '/includes/Admin/MapSettingsFields.php');
 assert_contract(is_string($mapSettingsFields), 'Map settings fields should be readable.');
@@ -387,6 +489,9 @@ assert_contract(strpos($frontendJs, '--map-studio-bubble-pointer-x') !== false, 
 assert_contract(strpos($frontendJs, 'is-above-region') !== false, 'Frontend JS should mark bubbles positioned above their selected region.');
 assert_contract(strpos($frontendJs, 'is-below-region') !== false, 'Frontend JS should mark bubbles positioned below their selected region.');
 assert_contract(strpos($frontendJs, 'map-studio__region-list-button') !== false, 'Frontend JS should bind region list buttons.');
+assert_contract(strpos($frontendJs, "querySelector('.map-studio__region-search')") !== false, 'Frontend JS should bind the region-search field within each map instance.');
+assert_contract(strpos($frontendJs, ".normalize('NFD')") !== false, 'Frontend region search should normalize accented labels.');
+assert_contract(strpos($frontendJs, 'item.hidden =') !== false, 'Frontend region search should hide nonmatching list items.');
 assert_contract(strpos($frontendJs, 'map-studio__region-list-toggle') !== false, 'Frontend JS should bind the region list toggle button.');
 assert_contract(strpos($frontendJs, 'is-region-list-collapsed') !== false, 'Frontend JS should toggle the collapsed region list class.');
 assert_contract(strpos($frontendJs, 'aria-expanded') !== false, 'Frontend JS should update sidebar toggle expanded state.');
@@ -422,6 +527,7 @@ assert_contract(
     'Bubble first content block should reserve space for the overlaid close button.'
 );
 assert_contract(strpos($frontendCss, '.map-studio__region-list') !== false, 'Frontend CSS should style the public region list.');
+assert_contract(strpos($frontendCss, '.map-studio__region-search') !== false, 'Frontend CSS should expose a public region-search hook.');
 assert_contract(strpos($frontendCss, '.map-studio__region-list-item') !== false, 'Frontend CSS should expose a public region list item hook.');
 assert_contract(strpos($frontendCss, '.map-studio__region-list-label') !== false, 'Frontend CSS should expose a public region list label hook.');
 assert_contract(strpos($frontendCss, 'is-region-list-left') !== false, 'Frontend CSS should support left-positioned region lists.');
@@ -444,5 +550,7 @@ assert_contract(strpos($frontendCss, 'container-type: inline-size') !== false, '
 assert_contract(strpos($frontendCss, '@container map-studio (max-width: 782px)') !== false, 'Frontend CSS should stack region lists when the map container is narrow.');
 assert_contract(strpos($frontendCss, '.map-studio__actions button:focus') !== false, 'Frontend CSS should suppress native focus outlines on action buttons.');
 assert_contract(strpos($frontendCss, 'border-color: var(--map-studio-color-stroke)') !== false, 'Frontend CSS should avoid visible focus border changes on action buttons.');
+
+require __DIR__ . '/map-duplicate-contracts.php';
 
 echo 'All contract checks passed.' . PHP_EOL;

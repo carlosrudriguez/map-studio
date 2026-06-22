@@ -69,7 +69,7 @@ final class MapMetaBox {
         MapDashboardSection::open('setup', __('Map Setup', 'map-studio'), __('Choose the base map and public region list behavior.', 'map-studio'));
         echo '<div class="map-studio-admin__setup-grid">';
         $this->renderMapSelector($maps, $mapDefinition);
-        MapSettingsFields::renderRegionListToggle((bool) $payload['regionListEnabled'], $payload['regionListPosition'], (bool) $payload['regionListHiddenByDefault']);
+        MapSettingsFields::renderRegionListSettings((bool) $payload['regionListEnabled'], $payload['regionListPosition'], (bool) $payload['regionListHiddenByDefault'], (bool) $payload['regionSearchEnabled'], $payload['regionSearchPlaceholder']);
         echo '</div>';
         MapSettingsFields::renderLegendEditor($payload['legend']);
         MapDashboardSection::close();
@@ -77,8 +77,12 @@ final class MapMetaBox {
         MapDashboardSection::open('content', __('Region Content', 'map-studio'), __('Edit the regions that can be clicked on the public map.', 'map-studio'));
         echo '<p class="map-studio-admin__summary" data-map-studio-summary>' . \esc_html($this->summaryText(count($regions), count($regionColors), count($shapes), $mapDefinition !== null)) . '</p>';
         echo '<div class="map-studio-admin__layout">';
+        echo '<div class="map-studio-admin__region-browser">';
+        echo '<label class="map-studio-admin__region-filter-label" for="map_studio_region_filter"><span>' . \esc_html__('Filter regions', 'map-studio') . '</span>';
+        echo '<input type="search" class="map-studio-admin__region-filter" id="map_studio_region_filter" placeholder="' . \esc_attr__('Search regions…', 'map-studio') . '" autocomplete="off"></label>';
         echo '<div class="map-studio-admin__regions" role="list">';
         $this->renderRegionButtons($shapes, $regions, $regionColors, $selectedRegionKey);
+        echo '</div>';
         echo '</div>';
         echo '<div class="map-studio-admin__editor">';
         $this->renderEditor($initialEditorContent);
@@ -105,21 +109,16 @@ final class MapMetaBox {
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
             return;
         }
-
         if (!isset($_POST[self::NONCE_NAME])) {
             return;
         }
-
         $nonce = $this->postedString(self::NONCE_NAME);
-
         if (!function_exists('wp_verify_nonce') || !\wp_verify_nonce($nonce, self::NONCE_ACTION)) {
             return;
         }
-
         if (!function_exists('current_user_can') || !\current_user_can('edit_post', $postId)) {
             return;
         }
-
         $registry = $this->registry();
         $existingPayload = MapMeta::get($postId);
         $lockedMapId = $existingPayload['mapId'];
@@ -152,6 +151,8 @@ final class MapMetaBox {
                 'regionListEnabled' => isset($_POST['map_studio_region_list_enabled']) ? '1' : '0',
                 'regionListPosition' => $this->postedString('map_studio_region_list_position'),
                 'regionListHiddenByDefault' => isset($_POST['map_studio_region_list_hidden_by_default']) ? '1' : '0',
+                'regionSearchEnabled' => isset($_POST['map_studio_region_search_enabled']) ? '1' : '0',
+                'regionSearchPlaceholder' => $this->postedString('map_studio_region_search_placeholder'),
                 'legend' => $this->postedString('map_studio_legend'),
             ],
             $lockedMapId,

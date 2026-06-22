@@ -353,6 +353,23 @@
   color: var(--map-studio-color-bubble-text);
 }
 
+.map-studio__region-search {
+  width: 100%;
+  min-height: var(--map-studio-control-size);
+  margin: 0 0 var(--map-studio-space-sm);
+  padding: var(--map-studio-space-sm) var(--map-studio-space-md);
+  border: 1px solid var(--map-studio-color-stroke);
+  border-radius: var(--map-studio-radius-sm);
+  background: var(--map-studio-color-bubble-background);
+  color: var(--map-studio-color-bubble-text);
+  font: inherit;
+}
+
+.map-studio__region-search:focus-visible {
+  border-color: currentColor;
+  outline: none;
+}
+
 .map-studio__region-list-items {
   display: grid;
   gap: var(--map-studio-space-xs);

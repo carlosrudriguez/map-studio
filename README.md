@@ -14,6 +14,9 @@ Map Studio is designed for site owners and editors who need polished, configurab
 - Provides global colors for inactive regions, active regions, hover states, strokes, and info bubbles.
 - Adds an optional public region list sidebar, shown only for regions that have content.
 - Lets the region list appear on the left or right side of the map.
+- Optionally adds immediate, accent-insensitive region search above the public region list.
+- Lets editors filter every region in the dashboard while configuring content.
+- Lets editors duplicate an existing map as a draft from the Maps list.
 - Uses SVG `viewBox` zooming so clicked regions stay crisp instead of becoming pixelated.
 - Supports multiple maps on the same page with isolated styles and interactions.
 
@@ -87,15 +90,19 @@ Map Studio discovers SVG files from `assets/maps/`. The current library includes
 4. Choose a base map in **Map Setup**.
 5. Add content to the regions you want visitors to click.
 6. Optional: enable **Region list** and choose whether the sidebar appears on the left or right.
-7. Optional: adjust selected region colors and global map colors in **Appearance**.
-8. Publish the map.
-9. Copy the shortcode into a page, post, or template area:
+7. Optional: enable **Region search** and customize the public search placeholder.
+8. Use **Filter regions** in the editor to find regions quickly on larger maps.
+9. Optional: adjust selected region colors and global map colors in **Appearance**.
+10. Publish the map.
+11. Copy the shortcode into a page, post, or template area:
 
 ```text
 [map_studio id="123"]
 ```
 
 Replace `123` with the ID of the published Map Studio map.
+
+To reuse an existing configuration, use the **Duplicate** row action beneath a map title. Map Studio creates a draft named `Copy of [original title]` with the same map content, colors, legend, sidebar, and search settings.
 
 ## Public Behavior
 
@@ -105,6 +112,8 @@ Visitors can interact with a map in two ways:
 - Click the matching name in the optional region list sidebar.
 
 Both actions open the same content bubble and trigger the same map zoom behavior. Regions without content remain inactive, even if they have a custom color in the editor.
+
+When region search is enabled, typing in the sidebar filters its content-backed regions immediately. Matching ignores capitalization and accents, and clearing the field restores the complete list.
 
 ## Requirements
 

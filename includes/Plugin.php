@@ -13,6 +13,7 @@ final class Plugin {
             Admin\Menu::class,
             Admin\MapPostType::class,
             Admin\MapListTable::class,
+            Admin\MapDuplicateAction::class,
             Admin\MapMetaBox::class,
             Frontend\Shortcode::class,
         ];

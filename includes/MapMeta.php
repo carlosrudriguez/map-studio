@@ -23,7 +23,7 @@ final class MapMeta {
     ];
 
     /**
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool, legend: string}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool, regionSearchEnabled: bool, regionSearchPlaceholder: string, legend: string}
      */
     public static function defaultPayload(): array {
         return [
@@ -34,13 +34,15 @@ final class MapMeta {
             'regionListEnabled' => false,
             'regionListPosition' => 'right',
             'regionListHiddenByDefault' => false,
+            'regionSearchEnabled' => false,
+            'regionSearchPlaceholder' => self::defaultSearchPlaceholder(),
             'legend' => '',
         ];
     }
 
     /**
      * @param array<string, mixed> $payload
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool, legend: string}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool, regionSearchEnabled: bool, regionSearchPlaceholder: string, legend: string}
      */
     public static function sanitizePayload(array $payload, string $lockedMapId = '', ?MapDefinition $mapDefinition = null): array {
         $sanitized = self::defaultPayload();
@@ -104,6 +106,11 @@ final class MapMeta {
         $sanitized['regionListEnabled'] = self::sanitizeBoolean($payload['regionListEnabled'] ?? false);
         $sanitized['regionListPosition'] = self::sanitizeRegionListPosition($payload['regionListPosition'] ?? 'right');
         $sanitized['regionListHiddenByDefault'] = $sanitized['regionListEnabled'] && self::sanitizeBoolean($payload['regionListHiddenByDefault'] ?? false);
+        $sanitized['regionSearchEnabled'] = $sanitized['regionListEnabled'] && self::sanitizeBoolean($payload['regionSearchEnabled'] ?? false);
+        $sanitized['regionSearchPlaceholder'] = self::sanitizePlainText(
+            $payload['regionSearchPlaceholder'] ?? self::defaultSearchPlaceholder(),
+            self::defaultSearchPlaceholder()
+        );
 
         $legend = isset($payload['legend']) && is_scalar($payload['legend']) ? trim((string) $payload['legend']) : '';
 
@@ -148,7 +155,7 @@ final class MapMeta {
     }
 
     /**
-     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool, legend: string}
+     * @return array{mapId: string, regions: array<string, string>, regionColors: array<string, string>, colors: array<string, string>, regionListEnabled: bool, regionListPosition: string, regionListHiddenByDefault: bool, regionSearchEnabled: bool, regionSearchPlaceholder: string, legend: string}
      */
     public static function get(int $postId, ?MapDefinition $mapDefinition = null): array {
         if (!function_exists('get_post_meta')) {
@@ -219,6 +226,23 @@ final class MapMeta {
         $position = strtolower(trim((string) $value));
 
         return in_array($position, ['left', 'right'], true) ? $position : 'right';
+    }
+
+    private static function defaultSearchPlaceholder(): string {
+        return function_exists('__') ? __('Search…', 'map-studio') : 'Search…';
+    }
+
+    private static function sanitizePlainText(mixed $value, string $fallback): string {
+        if (!is_scalar($value)) {
+            return $fallback;
+        }
+
+        $text = (string) $value;
+        $text = function_exists('sanitize_text_field')
+            ? \sanitize_text_field($text)
+            : trim(strip_tags($text));
+
+        return $text !== '' ? $text : $fallback;
     }
 
     private static function sanitizeEditorHtml(string $content): string {
